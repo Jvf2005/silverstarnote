@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>실버스타노트</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Noto Sans KR', sans-serif; background: #f3f4f6; min-height: 100vh; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .page-wrap { padding: 40px 16px; }
+    .card { max-width: 460px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 36px 32px; box-shadow: 0 2px 16px rgba(0,0,0,0.09); }
+    .logo { font-size: 26px; font-weight: 700; color: #2563eb; text-align: center; }
+    .logo-sub { font-size: 13px; color: #6b7280; text-align: center; margin: 4px 0 28px; }
+    .section-title { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 14px; }
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    input[type=text], input[type=email], input[type=password], input[type=date], select, textarea {
+      width: 100%; padding: 11px 13px; border: 1px solid #d1d5db; border-radius: 8px;
+      font-size: 14px; font-family: inherit; background: #fff; color: #111;
+      outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    textarea { height: 80px; resize: vertical; }
+    .field-hint { font-size: 12px; color: #9ca3af; margin-top: 5px; }
+    .row { display: flex; gap: 12px; }
+    .row .field { flex: 1; }
+    @media (max-width: 768px) { .row { flex-direction: column; } }
+
+    /* Buttons */
+    .btn-primary { width: 100%; padding: 13px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.15s; font-family: inherit; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-secondary { background: none; border: 1px solid #d1d5db; color: #374151; border-radius: 8px; padding: 11px 16px; font-size: 14px; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+    .btn-secondary:hover { background: #f9fafb; }
+    .btn-danger { background: none; border: 1px solid #fca5a5; color: #ef4444; border-radius: 6px; padding: 5px 11px; font-size: 13px; cursor: pointer; font-family: inherit; }
+    .btn-danger:hover { background: #fef2f2; }
+    .btn-text { background: none; border: none; color: #2563eb; font-size: 13px; cursor: pointer; text-decoration: underline; padding: 0; font-family: inherit; }
+    .btn-sm { padding: 8px 16px; font-size: 13px; font-weight: 600; border: none; border-radius: 7px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+    .btn-sm-primary { background: #2563eb; color: #fff; }
+    .btn-sm-primary:hover { background: #1d4ed8; }
+    .btn-sm-ghost { background: #fff; border: 1px solid #d1d5db; color: #374151; }
+    .btn-sm-ghost:hover { background: #f9fafb; }
+    .btn-sm-danger { background: none; border: 1px solid #fca5a5; color: #ef4444; }
+    .btn-sm-danger:hover { background: #fef2f2; }
+
+    .divider { border: none; border-top: 1px solid #f3f4f6; margin: 22px 0; }
+    .auth-links { text-align: center; font-size: 13px; color: #6b7280; margin-top: 14px; }
+    .auth-links a { color: #2563eb; cursor: pointer; font-weight: 500; }
+    .auth-links a:hover { text-decoration: underline; }
+    .alert { border-radius: 8px; padding: 11px 14px; font-size: 13px; margin-bottom: 16px; display: none; }
+    .alert.visible { display: block; }
+    .alert-error { background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626; }
+
+    /* Steps */
+    .steps { display: flex; align-items: center; justify-content: center; margin-bottom: 28px; }
+    .step { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #d1d5db; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #9ca3af; flex-shrink: 0; }
+    .step.active { border-color: #2563eb; background: #2563eb; color: #fff; }
+    .step.done { border-color: #10b981; background: #10b981; color: #fff; }
+    .step-line { height: 2px; width: 48px; background: #d1d5db; }
+    .step-line.done { background: #10b981; }
+
+    /* Verify */
+    .verify-icon { font-size: 52px; text-align: center; margin-bottom: 14px; }
+    .verify-title { font-size: 20px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+    .verify-desc { font-size: 14px; color: #6b7280; text-align: center; margin-bottom: 20px; line-height: 1.6; }
+    .proto-box { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px; text-align: center; font-size: 13px; color: #92400e; margin-bottom: 20px; line-height: 1.8; }
+    .code-input { text-align: center; letter-spacing: 6px; font-size: 22px; font-family: monospace; }
+
+    /* Dashboard header */
+    .dash-header { background: #1d4ed8; color: #fff; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 50; }
+    .dash-logo { font-size: 18px; font-weight: 700; }
+    .dash-meta { font-size: 13px; display: flex; align-items: center; gap: 14px; }
+    .dash-meta span { opacity: 0.85; }
+    .btn-logout { background: rgba(255,255,255,0.15); border: none; color: #fff; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: inherit; }
+    .btn-logout:hover { background: rgba(255,255,255,0.28); }
+
+    /* Dashboard body */
+    .dash-body { padding: 28px 16px; max-width: 960px; margin: 0 auto; }
+
+    /* Tabs */
+    .tabs { display: flex; border-bottom: 2px solid #e5e7eb; margin-bottom: 24px; overflow-x: auto; }
+    .tab { padding: 10px 20px; font-size: 14px; font-weight: 500; color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; white-space: nowrap; flex-shrink: 0; }
+    .tab:hover { color: #374151; }
+    .tab.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* Info card */
+    .info-card { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+    .info-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(191,219,254,0.5); }
+    .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .info-key { font-size: 13px; color: #6b7280; }
+    .info-val { font-size: 14px; font-weight: 600; color: #1e40af; }
+
+    /* Invite code */
+    .invite-box { background: #fff; border: 2px dashed #93c5fd; border-radius: 10px; padding: 24px; text-align: center; margin-bottom: 24px; }
+    .invite-label { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+    .invite-code { font-size: 28px; font-weight: 700; color: #1d4ed8; letter-spacing: 4px; font-family: monospace; margin-bottom: 10px; }
+    .copy-ok { font-size: 13px; color: #16a34a; margin-top: 6px; display: none; }
+    .copy-ok.visible { display: block; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; padding: 11px 14px; font-size: 12px; color: #6b7280; font-weight: 600; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+    td { padding: 13px 14px; border-bottom: 1px solid #f3f4f6; color: #374151; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-admin { background: #ede9fe; color: #6d28d9; }
+    .badge-member { background: #d1fae5; color: #065f46; }
+    .empty-row td { text-align: center; color: #9ca3af; padding: 28px; }
+
+    /* Record form */
+    .radio-group { background: #f9fafb; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .radio-label { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #374151; cursor: pointer; }
+    .check-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+    .check-row label { font-size: 14px; color: #374151; cursor: pointer; }
+    .result-box { display: none; margin-top: 22px; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 20px; }
+    .result-box.visible { display: block; }
+    .result-label { font-size: 13px; font-weight: 600; color: #1e40af; margin-bottom: 10px; }
+    .result-text { font-size: 15px; color: #1f2937; line-height: 1.9; background: #fff; border-radius: 8px; padding: 14px; }
+
+    /* ── Modal ────────────────────────────────────────────────────────────── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.48); z-index: 200; justify-content: center; align-items: flex-start; padding: 40px 16px; overflow-y: auto; }
+    .modal-overlay.open { display: flex; }
+    .modal-card { background: #fff; border-radius: 16px; width: 100%; max-width: 480px; box-shadow: 0 8px 36px rgba(0,0,0,0.2); margin: auto; flex-shrink: 0; }
+    .modal-wide { max-width: 620px; }
+    .modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 24px 16px; border-bottom: 1px solid #f3f4f6; gap: 12px; }
+    .modal-title { font-size: 17px; font-weight: 700; color: #111; }
+    .modal-subtitle { font-size: 13px; color: #6b7280; margin-top: 3px; }
+    .modal-close { background: none; border: none; font-size: 22px; color: #9ca3af; cursor: pointer; padding: 0; line-height: 1; flex-shrink: 0; margin-top: -2px; }
+    .modal-close:hover { color: #374151; }
+    .modal-body { padding: 20px 24px 28px; }
+
+    /* ── Senior cards ─────────────────────────────────────────────────────── */
+    .senior-toolbar { display: flex; gap: 10px; margin-bottom: 18px; align-items: center; }
+    .search-wrap { flex: 1; position: relative; }
+    .search-wrap input { padding-left: 38px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 15px; color: #9ca3af; pointer-events: none; line-height: 1; }
+    .senior-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 12px; }
+    .senior-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+    .senior-card:hover { border-color: #93c5fd; box-shadow: 0 2px 10px rgba(37,99,235,0.1); }
+    .senior-card.inactive { opacity: 0.5; }
+    .senior-avatar { width: 46px; height: 46px; border-radius: 50%; background: #dbeafe; color: #1d4ed8; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 700; flex-shrink: 0; }
+    .senior-avatar.f { background: #fce7f3; color: #be185d; }
+    .senior-info { flex: 1; min-width: 0; }
+    .senior-name { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 3px; }
+    .senior-meta { font-size: 12px; color: #6b7280; margin-bottom: 2px; }
+    .senior-last { font-size: 12px; color: #9ca3af; }
+    .senior-chevron { font-size: 20px; color: #d1d5db; flex-shrink: 0; }
+    .empty-state { grid-column: 1 / -1; text-align: center; padding: 52px 0; color: #9ca3af; }
+    .empty-state-icon { font-size: 44px; margin-bottom: 12px; }
+    .empty-state-text { font-size: 14px; line-height: 1.7; }
+    .inactive-toggle { margin-top: 14px; font-size: 13px; color: #6b7280; display: flex; align-items: center; gap: 7px; cursor: pointer; }
+    .inactive-toggle input { width: 15px; height: 15px; cursor: pointer; }
+
+    /* ── Senior detail modal ──────────────────────────────────────────────── */
+    .senior-detail-info { background: #f9fafb; border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; }
+    .senior-detail-row { display: flex; gap: 6px; font-size: 13px; padding: 5px 0; border-bottom: 1px solid #f3f4f6; }
+    .senior-detail-row:last-child { border-bottom: none; }
+    .senior-detail-key { color: #6b7280; flex-shrink: 0; width: 64px; }
+    .senior-detail-val { color: #111; font-weight: 500; }
+    .rec-list { display: flex; flex-direction: column; gap: 10px; }
+    .rec-item { background: #f9fafb; border-radius: 10px; padding: 14px; cursor: pointer; transition: background 0.15s; }
+    .rec-item:hover { background: #f0f4ff; }
+    .rec-item-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .rec-item-date { font-size: 12px; color: #6b7280; }
+    .rec-domain-badge { font-size: 11px; font-weight: 600; background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 12px; }
+    .rec-item-text { font-size: 13px; color: #374151; line-height: 1.65; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .rec-item-by { font-size: 11px; color: #9ca3af; margin-top: 6px; }
+    .rec-item-hint { font-size: 11px; color: #bfdbfe; margin-top: 5px; text-align: right; }
+    .detail-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+
+    /* ── Record form extras ───────────────────────────────────────────────── */
+    .no-senior-notice { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 14px 16px; font-size: 13px; color: #92400e; margin-bottom: 20px; display: none; }
+    .no-senior-notice.visible { display: block; }
+    .rec-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+    .rec-saved { font-size: 13px; color: #16a34a; display: none; }
+    .rec-saved.visible { display: inline; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════ LOGIN ════════════════════════════════ -->
+<div id="s-login" class="screen page-wrap">
+  <div class="card">
+    <div class="logo">🌟 실버스타노트</div>
+    <div class="logo-sub">어르신 케어 기록 플랫폼</div>
+    <div id="login-alert" class="alert alert-error"></div>
+    <div class="field"><label>이메일</label><input type="email" id="login-email" placeholder="이메일 입력" /></div>
+    <div class="field"><label>비밀번호</label><input type="password" id="login-pw" placeholder="비밀번호 입력" /></div>
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">로그인</button>
+    <hr class="divider" />
+    <div class="auth-links">센터가 없으신가요? <a onclick="showCenterReg()">센터 새로 등록하기</a></div>
+    <div class="auth-links">초대코드를 받으셨나요? <a onclick="showMemberReg()">직원으로 가입하기</a></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ CENTER REGISTRATION ══════════════════════════ -->
+<div id="s-center-reg" class="screen page-wrap">
+  <div class="card">
+    <div class="logo">🌟 실버스타노트</div>
+    <div class="logo-sub">센터 신규 등록</div>
+    <div class="steps">
+      <div class="step active" id="cs1-dot">1</div><div class="step-line" id="cs-line1"></div>
+      <div class="step" id="cs2-dot">2</div><div class="step-line" id="cs-line2"></div>
+      <div class="step" id="cs3-dot">✓</div>
+    </div>
+    <div id="creg-alert" class="alert alert-error"></div>
+    <div id="creg-s1">
+      <div class="section-title">센터 정보</div>
+      <div class="field"><label>센터명 <span style="color:#ef4444">*</span></label><input type="text" id="creg-cname" placeholder="예: 행복복지센터" /></div>
+      <div class="field"><label>사업자번호 <span style="color:#ef4444">*</span></label><input type="text" id="creg-bizno" placeholder="000-00-00000" maxlength="12" /></div>
+      <div class="field"><label>대표자명 <span style="color:#ef4444">*</span></label><input type="text" id="creg-rep" placeholder="홍길동" /></div>
+      <button class="btn-primary" id="creg-btn1" onclick="cregStep1Next()">다음 단계 →</button>
+    </div>
+    <div id="creg-s2" style="display:none">
+      <div class="section-title">관리자 계정 (센터장)</div>
+      <div class="field"><label>이름 <span style="color:#ef4444">*</span></label><input type="text" id="creg-aname" placeholder="관리자 이름" /></div>
+      <div class="field"><label>이메일 <span style="color:#ef4444">*</span></label><input type="email" id="creg-email" placeholder="admin@center.com" /><div class="field-hint">이 이메일로 인증 코드가 발송됩니다</div></div>
+      <div class="field"><label>비밀번호 <span style="color:#ef4444">*</span></label><input type="password" id="creg-pw" placeholder="8자 이상" /></div>
+      <div class="field"><label>비밀번호 확인 <span style="color:#ef4444">*</span></label><input type="password" id="creg-pw2" placeholder="비밀번호 재입력" /></div>
+      <div class="row">
+        <button class="btn-secondary" style="flex:1" onclick="cregStep1Back()">← 이전</button>
+        <button class="btn-primary" style="flex:2" id="creg-btn2" onclick="cregStep2Next()">가입 신청하기</button>
+      </div>
+    </div>
+    <div id="creg-s3" style="display:none">
+      <div class="verify-icon">📧</div>
+      <div class="verify-title">이메일 인증</div>
+      <div class="verify-desc" id="creg-verify-desc"></div>
+      <div class="proto-box" id="creg-proto-hint"></div>
+      <div class="field"><label>인증 코드 6자리</label><input type="text" id="creg-vcode" class="code-input" placeholder="· · · · · ·" maxlength="6" /></div>
+      <button class="btn-primary" id="creg-btn3" onclick="cregVerify()">인증 완료하기</button>
+    </div>
+    <div class="auth-links"><a onclick="showScreen('s-login')">← 로그인으로 돌아가기</a></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ MEMBER REGISTRATION ══════════════════════════ -->
+<div id="s-member-reg" class="screen page-wrap">
+  <div class="card">
+    <div class="logo">🌟 실버스타노트</div>
+    <div class="logo-sub">직원 가입</div>
+    <div id="mreg-alert" class="alert alert-error"></div>
+    <div class="field"><label>초대 코드 <span style="color:#ef4444">*</span></label><input type="text" id="mreg-code" placeholder="관리자에게 받은 초대 코드" style="text-transform:uppercase;letter-spacing:3px;font-family:monospace;" oninput="checkInviteCode(this.value)" /><div class="field-hint" id="mreg-center-hint"></div></div>
+    <div class="field"><label>이름 <span style="color:#ef4444">*</span></label><input type="text" id="mreg-name" placeholder="이름 입력" /></div>
+    <div class="field"><label>이메일 <span style="color:#ef4444">*</span></label><input type="email" id="mreg-email" placeholder="이메일 입력" /></div>
+    <div class="field"><label>비밀번호 <span style="color:#ef4444">*</span></label><input type="password" id="mreg-pw" placeholder="8자 이상" /></div>
+    <div class="field"><label>비밀번호 확인 <span style="color:#ef4444">*</span></label><input type="password" id="mreg-pw2" placeholder="비밀번호 재입력" /></div>
+    <button class="btn-primary" id="mreg-btn" onclick="doMemberReg()">가입하기</button>
+    <div class="auth-links"><a onclick="showScreen('s-login')">← 로그인으로 돌아가기</a></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════ ADMIN DASHBOARD ════════════════════════════ -->
+<div id="s-admin" class="screen">
+  <div class="dash-header">
+    <div class="dash-logo">🌟 실버스타노트</div>
+    <div class="dash-meta">
+      <span id="admin-center-tag"></span>
+      <span id="admin-name-tag"></span>
+      <button class="btn-logout" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+  <div class="dash-body">
+    <div class="tabs">
+      <div class="tab active" id="atab-info"    onclick="switchAdminTab('info')">📋 센터 정보</div>
+      <div class="tab"        id="atab-seniors" onclick="switchAdminTab('seniors')">👴 어르신 목록</div>
+      <div class="tab"        id="atab-members" onclick="switchAdminTab('members')">👥 직원 관리</div>
+    </div>
+    <div class="tab-pane active" id="apane-info">
+      <div class="section-title">센터 정보</div>
+      <div class="info-card">
+        <div class="info-row"><span class="info-key">센터 ID</span><span class="info-val" id="ai-id" style="font-family:monospace;font-size:13px;"></span></div>
+        <div class="info-row"><span class="info-key">센터명</span><span class="info-val" id="ai-name"></span></div>
+        <div class="info-row"><span class="info-key">사업자번호</span><span class="info-val" id="ai-biz"></span></div>
+        <div class="info-row"><span class="info-key">대표자명</span><span class="info-val" id="ai-rep"></span></div>
+        <div class="info-row"><span class="info-key">구독 상태</span><span class="info-val" id="ai-subs"></span></div>
+      </div>
+      <div class="section-title">직원 초대 코드</div>
+      <div class="invite-box">
+        <div class="invite-label">아래 코드를 직원에게 공유하세요 — 직원은 이 코드로 가입합니다</div>
+        <div class="invite-code" id="ai-invite"></div>
+        <button class="btn-text" onclick="copyInviteCode()">클립보드에 복사</button>
+        <div class="copy-ok" id="ai-copy-ok">✅ 복사되었습니다!</div>
+      </div>
+    </div>
+    <div class="tab-pane" id="apane-seniors">
+      <div class="senior-toolbar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="admin-senior-search" placeholder="이름으로 검색" oninput="renderSeniors('admin-grid', this.value)" />
+        </div>
+        <button class="btn-sm btn-sm-primary" onclick="openSeniorReg()">+ 어르신 등록</button>
+      </div>
+      <div id="admin-grid" class="senior-grid"></div>
+      <label class="inactive-toggle">
+        <input type="checkbox" id="admin-show-inactive" onchange="renderSeniors('admin-grid', document.getElementById('admin-senior-search').value)" />
+        퇴소 어르신 포함하여 표시
+      </label>
+    </div>
+    <div class="tab-pane" id="apane-members">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="section-title" style="margin:0;">직원 목록</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>이름</th><th>이메일</th><th>역할</th><th>상태</th><th>관리</th></tr></thead>
+          <tbody id="members-tbody"></tbody>
+        </table>
+      </div>
+      <p style="font-size:12px;color:#9ca3af;margin-top:12px;">* 비활성화된 직원의 기록은 센터에 귀속되어 유지됩니다.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════ MEMBER DASHBOARD ════════════════════════════ -->
+<div id="s-member" class="screen">
+  <div class="dash-header">
+    <div class="dash-logo">🌟 실버스타노트</div>
+    <div class="dash-meta">
+      <span id="member-center-tag"></span>
+      <span id="member-name-tag"></span>
+      <button class="btn-logout" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+  <div class="dash-body" style="max-width:860px;">
+    <div class="tabs">
+      <div class="tab active" id="mtab-seniors" onclick="switchMemberTab('seniors')">👴 어르신 목록</div>
+      <div class="tab"        id="mtab-record"  onclick="switchMemberTab('record')">📝 관찰 기록 작성</div>
+    </div>
+    <div class="tab-pane active" id="mpane-seniors">
+      <div class="senior-toolbar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="member-senior-search" placeholder="이름으로 검색" oninput="renderSeniors('member-grid', this.value)" />
+        </div>
+        <button class="btn-sm btn-sm-primary" onclick="openSeniorReg()">+ 어르신 등록</button>
+      </div>
+      <div id="member-grid" class="senior-grid"></div>
+      <label class="inactive-toggle">
+        <input type="checkbox" id="member-show-inactive" onchange="renderSeniors('member-grid', document.getElementById('member-senior-search').value)" />
+        퇴소 어르신 포함하여 표시
+      </label>
+    </div>
+    <div class="tab-pane" id="mpane-record">
+      <h2 style="font-size:18px;font-weight:700;color:#111;margin-bottom:4px;">관찰 기록 작성</h2>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:20px;">어르신 활동 관찰 기록 문장을 자동 생성합니다</p>
+      <div class="no-senior-notice" id="no-senior-notice">
+        아직 등록된 어르신이 없습니다.
+        <a class="btn-text" style="margin-left:4px;" onclick="switchMemberTab('seniors')">어르신 목록에서 먼저 등록해주세요 →</a>
+      </div>
+      <div id="rec-form-body">
+        <div class="field">
+          <label>어르신 선택 <span style="color:#ef4444">*</span></label>
+          <select id="rec-senior-select" onchange="onSelectSenior(this.value)">
+            <option value="">-- 어르신을 선택하세요 --</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>인지 영역</label>
+            <select id="rec-domain">
+              <option>주의집중</option><option>기억</option><option>언어</option>
+              <option>시지각</option><option>사고</option><option>개인회상</option>
+              <option>사회회상</option><option>감정회상</option><option>일상생활</option>
+              <option>문제해결</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>문제 유형</label>
+            <input type="text" id="rec-tasktype" placeholder="예: 색칠하기, 미로찾기" />
+          </div>
+        </div>
+        <div class="field">
+          <label>활동 주제</label>
+          <input type="text" id="rec-topic" placeholder="예: 고향 풍경, 시장 구경" />
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>도움 수준</label>
+            <div class="radio-group">
+              <label class="radio-label"><input type="radio" name="rec-level" value="1" /> 독립적 수행 (도움 없음)</label>
+              <label class="radio-label"><input type="radio" name="rec-level" value="2" checked /> 구두 힌트 (가끔 설명)</label>
+              <label class="radio-label"><input type="radio" name="rec-level" value="3" /> 지속적 격려 (독려 필요)</label>
+              <label class="radio-label"><input type="radio" name="rec-level" value="4" /> 시각적 시범 (보여줘야 함)</label>
+              <label class="radio-label"><input type="radio" name="rec-level" value="5" /> 신체적 보조 (직접 도와드림)</label>
+            </div>
+          </div>
+          <div class="field">
+            <label>참여도</label>
+            <div class="radio-group">
+              <label class="radio-label"><input type="radio" name="rec-participation" value="self" /> 자율적 적극참여</label>
+              <label class="radio-label"><input type="radio" name="rec-participation" value="active" /> 적극 참여</label>
+              <label class="radio-label"><input type="radio" name="rec-participation" value="normal" checked /> 보통 참여</label>
+              <label class="radio-label"><input type="radio" name="rec-participation" value="passive" /> 소극 참여</label>
+              <label class="radio-label"><input type="radio" name="rec-participation" value="difficult" /> 참여 어려움</label>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>특이사항 및 반응</label>
+          <textarea id="rec-tags" placeholder="예: 옛날 추억을 이야기하며 즐거워하심"></textarea>
+        </div>
+        <button class="btn-primary" onclick="generateRecord()">관찰 기록 문장 생성하기</button>
+        <div class="result-box" id="rec-result-box">
+          <div class="result-label">📝 생성된 관찰 기록</div>
+          <div class="result-text" id="rec-result-text"></div>
+          <div class="rec-actions">
+            <button class="btn-text" onclick="copyRecord()">클립보드에 복사</button>
+            <button class="btn-sm btn-sm-primary" id="save-rec-btn" onclick="saveRecord()">기록 저장하기</button>
+            <span class="rec-saved" id="rec-saved">✅ 저장되었습니다!</span>
+          </div>
+          <div class="copy-ok" id="rec-copy-ok">✅ 복사되었습니다!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ MODAL: 어르신 등록 ═════════════════════════════ -->
+<div id="modal-sreg" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div><div class="modal-title">어르신 등록</div></div>
+      <button class="modal-close" onclick="closeModal('modal-sreg')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="sreg-alert" class="alert alert-error"></div>
+      <div class="field"><label>성함 <span style="color:#ef4444">*</span></label><input type="text" id="sreg-name" placeholder="어르신 성함" /></div>
+      <div class="row">
+        <div class="field"><label>생년월일 <span style="color:#ef4444">*</span></label><input type="date" id="sreg-birth" /></div>
+        <div class="field">
+          <label>성별 <span style="color:#ef4444">*</span></label>
+          <select id="sreg-gender"><option value="">선택</option><option value="m">남성</option><option value="f">여성</option></select>
+        </div>
+      </div>
+      <div class="field"><label>특이사항</label><textarea id="sreg-notes" style="height:70px;" placeholder="예: 고혈압 있음, 왼손잡이"></textarea></div>
+      <button class="btn-primary" id="sreg-btn" onclick="submitSeniorReg()">등록하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ MODAL: 어르신 상세 ═════════════════════════════ -->
+<div id="modal-sdetail" class="modal-overlay">
+  <div class="modal-card modal-wide">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="sd-name"></div>
+        <div class="modal-subtitle" id="sd-meta"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-sdetail')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="senior-detail-info">
+        <div class="senior-detail-row"><span class="senior-detail-key">생년월일</span><span class="senior-detail-val" id="sd-birth"></span></div>
+        <div class="senior-detail-row"><span class="senior-detail-key">특이사항</span><span class="senior-detail-val" id="sd-notes"></span></div>
+      </div>
+      <div class="detail-section-header">
+        <div class="section-title" style="margin:0;">📋 관찰 기록</div>
+        <button class="btn-sm" id="sd-active-btn" onclick="toggleSeniorActive()"></button>
+      </div>
+      <div id="sd-records" class="rec-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ MODAL: 기록 상세보기 ════════════════════════════ -->
+<div id="modal-rdetail" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="rd-senior-name"></div>
+        <div class="modal-subtitle" id="rd-date"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-rdetail')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        <span class="rec-domain-badge" id="rd-domain" style="font-size:13px;padding:4px 12px;"></span>
+        <span id="rd-task-type" style="font-size:13px;color:#6b7280;align-self:center;"></span>
+      </div>
+      <div style="background:#f9fafb;border-radius:10px;padding:16px;font-size:15px;color:#1f2937;line-height:1.9;margin-bottom:16px;" id="rd-text"></div>
+      <div style="font-size:13px;color:#6b7280;">작성자: <strong id="rd-user"></strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════ Supabase CDN ════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ── SUPABASE CLIENT ──────────────────────────────────────────────────────────
+const { createClient } = supabase;
+const sb = createClient(
+  'https://xgcslggptovavafnmhan.supabase.co',
+  'sb_publishable_lSuNZkwgTyI-IKEvoLaoQQ_caQDr2FN'
+);
+
+// ── DB HELPERS ───────────────────────────────────────────────────────────────
+async function dbAll(table, match = {}) {
+  let q = sb.from(table).select('*');
+  for (const [k, v] of Object.entries(match)) q = q.eq(k, v);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data || [];
+}
+async function dbOne(table, match) {
+  let q = sb.from(table).select('*');
+  for (const [k, v] of Object.entries(match)) q = q.eq(k, v);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data && data[0]) || null;
+}
+async function dbInsert(table, row) {
+  const { error } = await sb.from(table).insert(row);
+  if (error) throw error;
+}
+async function dbUpdate(table, idCol, idVal, updates) {
+  const { error } = await sb.from(table).update(updates).eq(idCol, idVal);
+  if (error) throw error;
+}
+
+// ── SESSION (localStorage) ───────────────────────────────────────────────────
+function getSession() { try { return JSON.parse(localStorage.getItem('ss_session')); } catch(e) { return null; } }
+function setSession(o){ localStorage.setItem('ss_session', JSON.stringify(o)); }
+function clearSession(){ localStorage.removeItem('ss_session'); }
+
+// ── UTILS ────────────────────────────────────────────────────────────────────
+function genId(p)    { return p + '-' + Math.random().toString(36).substr(2,8).toUpperCase(); }
+function genInvite() { return 'INV-' + Math.random().toString(36).substr(2,6).toUpperCase(); }
+function hashPw(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(16);
+}
+function showAlert(el, msg) { el.textContent = msg; el.classList.add('visible'); }
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
+}
+function fmtBirth(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return y + '년 ' + +m + '월 ' + +d + '일';
+}
+function calcAge(birth) {
+  if (!birth) return '?';
+  const t = new Date(), b = new Date(birth);
+  let a = t.getFullYear() - b.getFullYear();
+  if (t.getMonth()-b.getMonth() < 0 || (t.getMonth()===b.getMonth() && t.getDate()<b.getDate())) a--;
+  return a;
+}
+function setBtnLoading(id, on) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.disabled = on;
+  if (on) el.dataset.orig = el.textContent, el.textContent = '처리 중…';
+  else    el.textContent = el.dataset.orig || el.textContent;
+}
+function dbErr(al, e) {
+  console.error(e);
+  showAlert(al, '오류가 발생했습니다: ' + (e.message || '잠시 후 다시 시도해주세요.'));
+}
+
+// ── SCREEN ───────────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function showCenterReg() {
+  ['creg-cname','creg-bizno','creg-rep','creg-aname','creg-email','creg-pw','creg-pw2','creg-vcode']
+    .forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('creg-alert').classList.remove('visible');
+  document.getElementById('creg-s1').style.display = 'block';
+  document.getElementById('creg-s2').style.display = 'none';
+  document.getElementById('creg-s3').style.display = 'none';
+  ['cs1-dot','cs2-dot','cs3-dot'].forEach((id,i) => document.getElementById(id).className = i===0?'step active':'step');
+  ['cs-line1','cs-line2'].forEach(id => document.getElementById(id).className = 'step-line');
+  _creg = {}; _vcode = '';
+  showScreen('s-center-reg');
+}
+function showMemberReg() {
+  ['mreg-code','mreg-name','mreg-email','mreg-pw','mreg-pw2'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('mreg-center-hint').textContent = '';
+  document.getElementById('mreg-alert').classList.remove('visible');
+  showScreen('s-member-reg');
+}
+
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pw    = document.getElementById('login-pw').value;
+  const al    = document.getElementById('login-alert');
+  al.classList.remove('visible');
+  if (!email || !pw) { showAlert(al, '이메일과 비밀번호를 입력해주세요.'); return; }
+  setBtnLoading('login-btn', true);
+  try {
+    const rows = await dbAll('users', { email });
+    const user = rows.find(u => u.pw_hash === hashPw(pw));
+    if (!user)           { showAlert(al, '이메일 또는 비밀번호가 올바르지 않습니다.'); return; }
+    if (!user.is_active) { showAlert(al, '비활성화된 계정입니다. 관리자에게 문의하세요.'); return; }
+    setSession({ user_id: user.user_id, center_id: user.center_id, role: user.role });
+    await goToDashboard(user);
+  } catch(e) { dbErr(al, e); }
+  finally    { setBtnLoading('login-btn', false); }
+}
+
+function doLogout() {
+  clearSession();
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-pw').value = '';
+  document.getElementById('login-alert').classList.remove('visible');
+  showScreen('s-login');
+}
+
+async function goToDashboard(user) {
+  const center = await dbOne('centers', { center_id: user.center_id });
+  if (!center) { doLogout(); return; }
+  if (user.role === 'admin') {
+    document.getElementById('admin-center-tag').textContent = center.name;
+    document.getElementById('admin-name-tag').textContent   = user.name + ' 관리자';
+    document.getElementById('ai-id').textContent    = center.center_id;
+    document.getElementById('ai-name').textContent  = center.name;
+    document.getElementById('ai-biz').textContent   = center.business_no;
+    document.getElementById('ai-rep').textContent   = center.representative;
+    document.getElementById('ai-subs').textContent  = center.subscription === 'active' ? '✅ 활성' : '⏸ 일시중지';
+    document.getElementById('ai-invite').textContent = center.invite_code;
+    switchAdminTab('info');
+    showScreen('s-admin');
+  } else {
+    document.getElementById('member-center-tag').textContent = center.name;
+    document.getElementById('member-name-tag').textContent   = user.name + ' 복지사';
+    switchMemberTab('seniors');
+    showScreen('s-member');
+  }
+}
+
+// ── CENTER REGISTRATION ──────────────────────────────────────────────────────
+var _creg = {}, _vcode = '';
+
+async function cregStep1Next() {
+  const cname = document.getElementById('creg-cname').value.trim();
+  const bizno = document.getElementById('creg-bizno').value.trim();
+  const rep   = document.getElementById('creg-rep').value.trim();
+  const al    = document.getElementById('creg-alert');
+  if (!cname||!bizno||!rep) { showAlert(al,'모든 필드를 입력해주세요.'); return; }
+  setBtnLoading('creg-btn1', true);
+  try {
+    const dup = await dbOne('centers', { business_no: bizno });
+    if (dup) { showAlert(al,'이미 등록된 사업자번호입니다.'); return; }
+    _creg = {cname,bizno,rep}; al.classList.remove('visible');
+    document.getElementById('creg-s1').style.display='none';
+    document.getElementById('creg-s2').style.display='block';
+    document.getElementById('cs1-dot').className='step done';
+    document.getElementById('cs2-dot').className='step active';
+    document.getElementById('cs-line1').className='step-line done';
+  } catch(e) { dbErr(al,e); }
+  finally    { setBtnLoading('creg-btn1', false); }
+}
+
+function cregStep1Back() {
+  document.getElementById('creg-s2').style.display='none';
+  document.getElementById('creg-s1').style.display='block';
+  document.getElementById('cs1-dot').className='step active';
+  document.getElementById('cs2-dot').className='step';
+  document.getElementById('cs-line1').className='step-line';
+}
+
+async function cregStep2Next() {
+  const aname=document.getElementById('creg-aname').value.trim();
+  const email=document.getElementById('creg-email').value.trim().toLowerCase();
+  const pw=document.getElementById('creg-pw').value;
+  const pw2=document.getElementById('creg-pw2').value;
+  const al=document.getElementById('creg-alert');
+  if (!aname||!email||!pw||!pw2) { showAlert(al,'모든 필드를 입력해주세요.'); return; }
+  if (pw.length<8) { showAlert(al,'비밀번호는 8자 이상이어야 합니다.'); return; }
+  if (pw!==pw2)    { showAlert(al,'비밀번호가 일치하지 않습니다.'); return; }
+  setBtnLoading('creg-btn2', true);
+  try {
+    const dup = await dbOne('users', { email });
+    if (dup) { showAlert(al,'이미 사용 중인 이메일입니다.'); return; }
+    _creg.aname=aname; _creg.email=email; _creg.pw=pw;
+    _vcode=String(Math.floor(100000+Math.random()*900000));
+    al.classList.remove('visible');
+    document.getElementById('creg-s2').style.display='none';
+    document.getElementById('creg-s3').style.display='block';
+    document.getElementById('cs2-dot').className='step done';
+    document.getElementById('cs3-dot').className='step active';
+    document.getElementById('cs-line2').className='step-line done';
+    document.getElementById('creg-verify-desc').textContent=email+' 으로 인증 코드를 발송했습니다.';
+    document.getElementById('creg-proto-hint').innerHTML=
+      '🔧 프로토타입 모드 — 실제 이메일 발송 없이 진행합니다<br>임시 인증 코드: <strong style="font-size:18px;letter-spacing:4px;">'+_vcode+'</strong>';
+  } catch(e) { dbErr(al,e); }
+  finally    { setBtnLoading('creg-btn2', false); }
+}
+
+async function cregVerify() {
+  const code=document.getElementById('creg-vcode').value.trim();
+  const al=document.getElementById('creg-alert');
+  if (code!==_vcode) { showAlert(al,'인증 코드가 올바르지 않습니다.'); return; }
+  setBtnLoading('creg-btn3', true);
+  try {
+    const centerId=genId('CNT');
+    await dbInsert('centers', {
+      center_id:centerId, name:_creg.cname, business_no:_creg.bizno,
+      representative:_creg.rep, subscription:'active',
+      invite_code:genInvite(), created_at:new Date().toISOString()
+    });
+    const user = {
+      user_id:genId('USR'), name:_creg.aname, email:_creg.email,
+      pw_hash:hashPw(_creg.pw), role:'admin', center_id:centerId,
+      is_active:true, email_verified:true, created_at:new Date().toISOString()
+    };
+    await dbInsert('users', user);
+    setSession({user_id:user.user_id, center_id:centerId, role:'admin'});
+    _creg={}; _vcode='';
+    await goToDashboard(user);
+  } catch(e) { dbErr(al,e); }
+  finally    { setBtnLoading('creg-btn3', false); }
+}
+
+// ── MEMBER REGISTRATION ──────────────────────────────────────────────────────
+var _inviteCenter = null;
+
+async function checkInviteCode(val) {
+  const code=val.trim().toUpperCase();
+  const hint=document.getElementById('mreg-center-hint');
+  if (code.length < 10) { hint.textContent=''; _inviteCenter=null; return; }
+  try {
+    const center=await dbOne('centers',{invite_code:code});
+    _inviteCenter=center;
+    if (center) { hint.style.color='#16a34a'; hint.textContent='✅ '+center.name+' — 유효한 초대 코드'; }
+    else        { hint.style.color='#ef4444'; hint.textContent='유효하지 않은 초대 코드입니다'; }
+  } catch(e) { hint.textContent=''; }
+}
+
+async function doMemberReg() {
+  const code=document.getElementById('mreg-code').value.trim().toUpperCase();
+  const name=document.getElementById('mreg-name').value.trim();
+  const email=document.getElementById('mreg-email').value.trim().toLowerCase();
+  const pw=document.getElementById('mreg-pw').value;
+  const pw2=document.getElementById('mreg-pw2').value;
+  const al=document.getElementById('mreg-alert');
+  if (!code||!name||!email||!pw||!pw2) { showAlert(al,'모든 필드를 입력해주세요.'); return; }
+  if (pw.length<8) { showAlert(al,'비밀번호는 8자 이상이어야 합니다.'); return; }
+  if (pw!==pw2)    { showAlert(al,'비밀번호가 일치하지 않습니다.'); return; }
+  setBtnLoading('mreg-btn', true);
+  try {
+    const center = _inviteCenter || await dbOne('centers',{invite_code:code});
+    if (!center) { showAlert(al,'유효하지 않은 초대 코드입니다.'); return; }
+    const dup = await dbOne('users',{email});
+    if (dup) { showAlert(al,'이미 사용 중인 이메일입니다.'); return; }
+    const user = {
+      user_id:genId('USR'), name, email, pw_hash:hashPw(pw),
+      role:'member', center_id:center.center_id,
+      is_active:true, email_verified:true, created_at:new Date().toISOString()
+    };
+    await dbInsert('users', user);
+    setSession({user_id:user.user_id, center_id:center.center_id, role:'member'});
+    await goToDashboard(user);
+  } catch(e) { dbErr(al,e); }
+  finally    { setBtnLoading('mreg-btn', false); }
+}
+
+// ── TABS ─────────────────────────────────────────────────────────────────────
+function switchAdminTab(tab) {
+  ['info','seniors','members'].forEach(t => {
+    document.getElementById('atab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('apane-'+t).classList.toggle('active', t===tab);
+  });
+  if (tab==='seniors') renderSeniors('admin-grid','');
+  if (tab==='members') renderMembersTable();
+}
+function switchMemberTab(tab) {
+  ['seniors','record'].forEach(t => {
+    document.getElementById('mtab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('mpane-'+t).classList.toggle('active', t===tab);
+  });
+  if (tab==='seniors') renderSeniors('member-grid','');
+  if (tab==='record')  initRecordForm();
+}
+
+// ── MEMBERS TABLE ─────────────────────────────────────────────────────────────
+async function renderMembersTable() {
+  const session=getSession(); if (!session) return;
+  const tbody=document.getElementById('members-tbody');
+  tbody.innerHTML='<tr class="empty-row"><td colspan="5" style="color:#9ca3af;">불러오는 중…</td></tr>';
+  try {
+    const users=await dbAll('users',{center_id:session.center_id});
+    if (!users.length) { tbody.innerHTML='<tr class="empty-row"><td colspan="5">아직 가입한 직원이 없습니다.</td></tr>'; return; }
+    tbody.innerHTML=users.map(u=>{
+      const roleBadge=u.role==='admin'?'<span class="badge badge-admin">관리자</span>':'<span class="badge badge-member">멤버</span>';
+      const statusBadge=u.is_active?'<span class="badge" style="background:#d1fae5;color:#065f46;">활성</span>':'<span class="badge" style="background:#f3f4f6;color:#9ca3af;">비활성</span>';
+      const isSelf=u.user_id===session.user_id;
+      const action=isSelf?'<span style="font-size:12px;color:#9ca3af;">본인</span>'
+        :u.is_active?'<button class="btn-danger" onclick="toggleUser(\''+u.user_id+'\',false)">비활성화</button>'
+        :'<button class="btn-secondary" style="font-size:13px;padding:5px 11px;" onclick="toggleUser(\''+u.user_id+'\',true)">복구</button>';
+      return '<tr><td><strong>'+u.name+'</strong></td><td style="color:#6b7280;">'+u.email+'</td><td>'+roleBadge+'</td><td>'+statusBadge+'</td><td>'+action+'</td></tr>';
+    }).join('');
+  } catch(e) { tbody.innerHTML='<tr class="empty-row"><td colspan="5" style="color:#ef4444;">불러오기 실패</td></tr>'; console.error(e); }
+}
+
+async function toggleUser(uid, activate) {
+  try {
+    await dbUpdate('users','user_id',uid,{is_active:activate});
+    await renderMembersTable();
+  } catch(e) { alert('오류가 발생했습니다.'); console.error(e); }
+}
+
+function copyInviteCode() {
+  navigator.clipboard.writeText(document.getElementById('ai-invite').textContent).then(()=>{
+    const el=document.getElementById('ai-copy-ok'); el.classList.add('visible');
+    setTimeout(()=>el.classList.remove('visible'),2000);
+  });
+}
+
+// ── SENIOR LIST ───────────────────────────────────────────────────────────────
+function seniorCardHTML(s, recs) {
+  const last=recs.filter(r=>r.senior_id===s.senior_id).sort((a,b)=>b.created_at.localeCompare(a.created_at))[0];
+  const age=calcAge(s.birth_date), gender=s.gender==='m'?'남성':'여성';
+  const avatarCls='senior-avatar'+(s.gender==='f'?' f':'');
+  return '<div class="senior-card'+(s.is_active?'':' inactive')+'" onclick="openSeniorDetail(\''+s.senior_id+'\')">'+
+    '<div class="'+avatarCls+'">'+s.name.charAt(0)+'</div>'+
+    '<div class="senior-info">'+
+      '<div class="senior-name">'+s.name+' 어르신'+(s.is_active?'':' <span style="font-size:11px;color:#9ca3af;">(퇴소)</span>')+'</div>'+
+      '<div class="senior-meta">만 '+age+'세 · '+gender+'</div>'+
+      '<div class="senior-last">최근 기록: '+(last?fmtDate(last.created_at):'없음')+'</div>'+
+    '</div>'+
+    '<div class="senior-chevron">›</div>'+
+  '</div>';
+}
+
+async function renderSeniors(gridId, query) {
+  const session=getSession(); if (!session) return;
+  const showInactiveId=gridId==='admin-grid'?'admin-show-inactive':'member-show-inactive';
+  const showInactive=document.getElementById(showInactiveId)?.checked||false;
+  const grid=document.getElementById(gridId);
+  grid.innerHTML='<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-text" style="color:#9ca3af;">불러오는 중…</div></div>';
+  try {
+    const allSeniors=await dbAll('seniors',{center_id:session.center_id});
+    const recs=await dbAll('records',{center_id:session.center_id});
+    const q=(query||'').trim();
+    const seniors=allSeniors.filter(s=>(s.is_active||showInactive)&&(!q||s.name.includes(q)));
+    if (!seniors.length) {
+      const msg=q
+        ?'<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">검색 결과가 없습니다.</div></div>'
+        :'<div class="empty-state"><div class="empty-state-icon">👴</div><div class="empty-state-text">아직 등록된 어르신이 없습니다.<br>"어르신 등록" 버튼을 눌러 추가해주세요.</div></div>';
+      grid.innerHTML=msg; return;
+    }
+    grid.innerHTML=seniors.map(s=>seniorCardHTML(s,recs)).join('');
+  } catch(e) {
+    grid.innerHTML='<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-text" style="color:#ef4444;">불러오기 실패. 새로고침해주세요.</div></div>';
+    console.error(e);
+  }
+}
+
+// ── SENIOR REG MODAL ──────────────────────────────────────────────────────────
+function openSeniorReg() {
+  ['sreg-name','sreg-notes'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('sreg-birth').value='';
+  document.getElementById('sreg-gender').value='';
+  document.getElementById('sreg-alert').classList.remove('visible');
+  openModal('modal-sreg');
+}
+async function submitSeniorReg() {
+  const name=document.getElementById('sreg-name').value.trim();
+  const birth=document.getElementById('sreg-birth').value;
+  const gender=document.getElementById('sreg-gender').value;
+  const notes=document.getElementById('sreg-notes').value.trim();
+  const al=document.getElementById('sreg-alert');
+  if (!name||!birth||!gender) { showAlert(al,'성함, 생년월일, 성별은 필수입니다.'); return; }
+  const session=getSession(); if (!session) return;
+  setBtnLoading('sreg-btn', true);
+  try {
+    await dbInsert('seniors',{
+      senior_id:genId('SEN'), name, birth_date:birth, gender, notes,
+      center_id:session.center_id, is_active:true, created_at:new Date().toISOString()
+    });
+    closeModal('modal-sreg');
+    if (document.getElementById('apane-seniors').classList.contains('active')) renderSeniors('admin-grid','');
+    if (document.getElementById('mpane-seniors').classList.contains('active'))  renderSeniors('member-grid','');
+  } catch(e) { dbErr(al,e); }
+  finally    { setBtnLoading('sreg-btn', false); }
+}
+
+// ── SENIOR DETAIL MODAL ───────────────────────────────────────────────────────
+var _detailSenior = null;
+
+async function openSeniorDetail(sid) {
+  _detailSenior=null;
+  openModal('modal-sdetail');
+  document.getElementById('sd-records').innerHTML='<div style="text-align:center;color:#9ca3af;padding:16px;font-size:14px;">불러오는 중…</div>';
+  try {
+    const senior=await dbOne('seniors',{senior_id:sid});
+    if (!senior) { closeModal('modal-sdetail'); return; }
+    _detailSenior=senior;
+    document.getElementById('sd-name').textContent=senior.name+' 어르신';
+    document.getElementById('sd-meta').textContent='만 '+calcAge(senior.birth_date)+'세 · '+(senior.gender==='m'?'남성':'여성');
+    document.getElementById('sd-birth').textContent=fmtBirth(senior.birth_date);
+    document.getElementById('sd-notes').textContent=senior.notes||'없음';
+    const btn=document.getElementById('sd-active-btn');
+    if (senior.is_active) { btn.textContent='퇴소 처리'; btn.className='btn-sm btn-sm-danger'; }
+    else                  { btn.textContent='복귀 처리'; btn.className='btn-sm btn-sm-ghost'; }
+    await renderSeniorRecords(sid);
+  } catch(e) {
+    document.getElementById('sd-records').innerHTML='<div style="text-align:center;color:#ef4444;padding:16px;">불러오기 실패</div>';
+    console.error(e);
+  }
+}
+
+async function renderSeniorRecords(sid) {
+  const el=document.getElementById('sd-records');
+  try {
+    const recs=await dbAll('records',{senior_id:sid});
+    recs.sort((a,b)=>b.created_at.localeCompare(a.created_at));
+    if (!recs.length) { el.innerHTML='<div style="text-align:center;color:#9ca3af;padding:24px;font-size:14px;">아직 관찰 기록이 없습니다.</div>'; return; }
+    el.innerHTML=recs.map(r=>
+      '<div class="rec-item" onclick="openRecordDetail(\''+r.record_id+'\')">'+
+      '<div class="rec-item-head"><span class="rec-item-date">'+fmtDate(r.created_at)+'</span><span class="rec-domain-badge">'+r.domain+'</span></div>'+
+      '<div class="rec-item-text">'+r.text+'</div>'+
+      '<div class="rec-item-by">작성: '+r.user_name+'</div>'+
+      '<div class="rec-item-hint">클릭하여 전체 보기</div>'+
+      '</div>'
+    ).join('');
+  } catch(e) { el.innerHTML='<div style="color:#ef4444;padding:16px;">불러오기 실패</div>'; console.error(e); }
+}
+
+async function toggleSeniorActive() {
+  if (!_detailSenior) return;
+  try {
+    const newState=!_detailSenior.is_active;
+    await dbUpdate('seniors','senior_id',_detailSenior.senior_id,{is_active:newState});
+    closeModal('modal-sdetail');
+    if (document.getElementById('apane-seniors').classList.contains('active')) renderSeniors('admin-grid','');
+    if (document.getElementById('mpane-seniors').classList.contains('active')) renderSeniors('member-grid','');
+  } catch(e) { alert('오류가 발생했습니다.'); console.error(e); }
+}
+
+// ── RECORD DETAIL MODAL ───────────────────────────────────────────────────────
+async function openRecordDetail(rid) {
+  openModal('modal-rdetail');
+  try {
+    const rec=await dbOne('records',{record_id:rid}); if (!rec) return;
+    const senior=await dbOne('seniors',{senior_id:rec.senior_id});
+    document.getElementById('rd-senior-name').textContent=(senior?senior.name:rec.senior_name)+' 어르신 — 관찰 기록';
+    document.getElementById('rd-date').textContent=fmtDate(rec.created_at);
+    document.getElementById('rd-domain').textContent=rec.domain;
+    document.getElementById('rd-task-type').textContent=rec.task_type?'· '+rec.task_type:'';
+    document.getElementById('rd-text').textContent=rec.text;
+    document.getElementById('rd-user').textContent=rec.user_name;
+  } catch(e) { closeModal('modal-rdetail'); console.error(e); }
+}
+
+// ── MODAL UTILS ───────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
+});
+
+// ── RECORD FORM ───────────────────────────────────────────────────────────────
+var _selectedSenior=null, _seniorsForForm=[];
+
+async function initRecordForm() {
+  const session=getSession(); if (!session) return;
+  const notice=document.getElementById('no-senior-notice');
+  const body=document.getElementById('rec-form-body');
+  try {
+    _seniorsForForm=await dbAll('seniors',{center_id:session.center_id,is_active:true});
+    if (!_seniorsForForm.length) { notice.classList.add('visible'); body.style.display='none'; return; }
+    notice.classList.remove('visible'); body.style.display='block';
+    const sel=document.getElementById('rec-senior-select');
+    sel.innerHTML='<option value="">-- 어르신을 선택하세요 --</option>'+
+      _seniorsForForm.map(s=>'<option value="'+s.senior_id+'">'+s.name+' 어르신 (만 '+calcAge(s.birth_date)+'세)</option>').join('');
+    sel.value=''; _selectedSenior=null;
+    document.getElementById('rec-result-box').classList.remove('visible');
+    document.getElementById('rec-saved').classList.remove('visible');
+  } catch(e) { console.error(e); }
+}
+
+function onSelectSenior(sid) {
+  _selectedSenior=_seniorsForForm.find(s=>s.senior_id===sid)||null;
+}
+
+function generateRecord() {
+  if (!_selectedSenior) { alert('어르신을 먼저 선택해주세요.'); return; }
+  const domain   = document.getElementById('rec-domain').value;
+  const taskType = document.getElementById('rec-tasktype').value.trim()||'인지';
+  const topic    = document.getElementById('rec-topic').value.trim();
+  const tags     = document.getElementById('rec-tags').value.trim();
+  const participation = (document.querySelector('input[name="rec-participation"]:checked')||{}).value||'normal';
+  const level         = (document.querySelector('input[name="rec-level"]:checked')||{}).value||'2';
+  const partTexts = {
+    'self':      '스스로 적극적으로 활동에 참여하며 높은 자기주도성을 보이셨습니다.',
+    'active':    '활동 내내 높은 집중력과 적극적인 참여를 보이셨습니다.',
+    'normal':    '전반적으로 무난하게 활동에 참여하셨습니다.',
+    'passive':   '다소 소극적이셨으나 끝까지 활동에 함께하셨습니다.',
+    'difficult': '활동 참여에 어려움을 보이셔서 충분한 지원이 제공되었습니다.'
+  };
+  const levels = {
+    '1':'별도의 도움 없이 스스로 과제를 완벽히 수행하셨습니다.',
+    '2':'간간이 구두로 설명을 드리자 무난하게 수행하셨습니다.',
+    '3':'지속적인 격려와 유도 질문을 통해 끝까지 참여하셨습니다.',
+    '4':'시각적인 시범과 설명을 반복하여 과제를 이해하고 수행하셨습니다.',
+    '5':'신체적 보조와 함께 단계별로 안내해 드려 활동을 마쳤습니다.'
+  };
+  let text=_selectedSenior.name+' 어르신은 오늘 ['+domain+'] 영역의 \''+taskType+'\' 활동에 참여하셨습니다. ';
+  if (topic) text+='\''+topic+'\' 주제로 진행된 활동에서 ';
+  text+=(partTexts[participation]||'')+' ';
+  text+=levels[level]||'';
+  if (tags)  text+=' 특히 "'+tags+'" 등의 반응을 보이셨습니다.';
+  document.getElementById('rec-result-text').textContent=text;
+  document.getElementById('rec-result-box').classList.add('visible');
+  document.getElementById('rec-saved').classList.remove('visible');
+  document.getElementById('rec-copy-ok').classList.remove('visible');
+}
+
+async function saveRecord() {
+  if (!_selectedSenior) return;
+  const session=getSession(); if (!session) return;
+  const text=document.getElementById('rec-result-text').textContent; if (!text) return;
+  setBtnLoading('save-rec-btn', true);
+  try {
+    const user=await dbOne('users',{user_id:session.user_id});
+    await dbInsert('records',{
+      record_id:genId('REC'),
+      senior_id:_selectedSenior.senior_id, senior_name:_selectedSenior.name,
+      user_id:session.user_id, user_name:user?user.name:'알 수 없음',
+      center_id:session.center_id,
+      domain:document.getElementById('rec-domain').value,
+      task_type:document.getElementById('rec-tasktype').value.trim(),
+      topic:document.getElementById('rec-topic').value.trim(),
+      level:(document.querySelector('input[name="rec-level"]:checked')||{}).value||'2',
+      participation:(document.querySelector('input[name="rec-participation"]:checked')||{}).value||'normal',
+      tags:document.getElementById('rec-tags').value.trim(),
+      text, created_at:new Date().toISOString()
+    });
+    document.getElementById('rec-saved').classList.add('visible');
+  } catch(e) { alert('저장 실패: '+e.message); console.error(e); }
+  finally    { setBtnLoading('save-rec-btn', false); }
+}
+
+function copyRecord() {
+  navigator.clipboard.writeText(document.getElementById('rec-result-text').textContent).then(()=>{
+    const el=document.getElementById('rec-copy-ok'); el.classList.add('visible');
+    setTimeout(()=>el.classList.remove('visible'),2000);
+  });
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('login-pw').addEventListener('keydown', function(e) {
+    if (e.key==='Enter') doLogin();
+  });
+});
+
+(async function init() {
+  const session=getSession();
+  if (session) {
+    try {
+      const user=await dbOne('users',{user_id:session.user_id});
+      if (user&&user.is_active) { await goToDashboard(user); return; }
+    } catch(e) { console.error('init error:', e); }
+  }
+  showScreen('s-login');
+})();
+</script>
+</body>
+</html>
