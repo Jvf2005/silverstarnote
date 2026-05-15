@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>실버스타노트</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Noto Sans KR', sans-serif; background: #f3f4f6; min-height: 100vh; padding: 24px 16px; }
+    .card { max-width: 640px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    h1 { font-size: 24px; font-weight: 600; color: #1d4ed8; text-align: center; }
+    .subtitle { font-size: 14px; color: #6b7280; text-align: center; margin: 6px 0 28px; }
+    .field { margin-bottom: 18px; }
+    label { display: block; font-size: 14px; font-weight: 500; color: #111; margin-bottom: 6px; }
+    input[type=text], select, textarea {
+      width: 100%; padding: 11px 12px; border: 1px solid #d1d5db;
+      border-radius: 8px; font-size: 14px; font-family: inherit;
+      background: #fff; color: #111; outline: none;
+    }
+    input[type=text]:focus, select:focus, textarea:focus { border-color: #2563eb; }
+    textarea { height: 80px; resize: vertical; }
+    .row { display: flex; gap: 12px; }
+    .row .field { flex: 1; }
+    .radio-group { background: #f9fafb; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .radio-label { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #374151; cursor: pointer; }
+    .check-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+    .check-row label { font-size: 14px; color: #374151; cursor: pointer; margin: 0; }
+    .btn-main { width: 100%; padding: 14px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
+    .btn-main:hover { background: #1d4ed8; }
+    .result-box { display: none; margin-top: 24px; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 20px; }
+    .result-box.visible { display: block; }
+    .result-label { font-size: 13px; font-weight: 600; color: #1e40af; margin-bottom: 10px; }
+    .result-text { font-size: 15px; color: #1f2937; line-height: 1.8; background: #fff; border-radius: 8px; padding: 14px; }
+    .btn-copy { margin-top: 10px; background: none; border: none; color: #2563eb; font-size: 13px; cursor: pointer; text-decoration: underline; padding: 0; }
+    .copy-ok { display: none; font-size: 13px; color: #16a34a; margin-top: 6px; }
+    .copy-ok.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🌟 실버스타노트</h1>
+    <p class="subtitle">어르신 관찰 기록 자동 생성 도구</p>
+
+    <div class="field">
+      <label for="name">어르신 성함</label>
+      <input type="text" id="name" placeholder="성함 입력" />
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="domain">인지 영역</label>
+        <select id="domain">
+          <option>주의집중</option><option>기억</option><option>언어</option>
+          <option>시지각</option><option>사고</option><option>개인회상</option>
+          <option>사회회상</option><option>감정회상</option><option>일상생활</option>
+          <option>문제해결</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="taskType">문제 유형</label>
+        <input type="text" id="taskType" placeholder="예: 색칠하기, 미로찾기" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="topic">활동 주제</label>
+      <input type="text" id="topic" placeholder="예: 고향 풍경, 시장 구경" />
+    </div>
+
+    <div class="field">
+      <label>도움 수준</label>
+      <div class="radio-group">
+        <label class="radio-label"><input type="radio" name="level" value="1" /> 독립적 수행 (도움 없음)</label>
+        <label class="radio-label"><input type="radio" name="level" value="2" checked /> 구두 힌트 (가끔 설명)</label>
+        <label class="radio-label"><input type="radio" name="level" value="3" /> 지속적 격려 (독려 필요)</label>
+        <label class="radio-label"><input type="radio" name="level" value="4" /> 시각적 시범 (보여줘야 함)</label>
+        <label class="radio-label"><input type="radio" name="level" value="5" /> 신체적 보조 (직접 도와드림)</label>
+      </div>
+    </div>
+
+    <div class="check-row">
+      <input type="checkbox" id="sdt" style="width:16px;height:16px;" />
+      <label for="sdt">어르신이 직접 이 활동을 선택하셨나요? (자율성 존중)</label>
+    </div>
+
+    <div class="field">
+      <label for="tags">특이사항 및 반응</label>
+      <textarea id="tags" placeholder="예: 옛날 추억을 이야기하며 즐거워하심"></textarea>
+    </div>
+
+    <button class="btn-main" onclick="generate()">관찰 기록 문장 생성하기</button>
+
+    <div class="result-box" id="resultBox">
+      <div class="result-label">📝 생성된 관찰 기록</div>
+      <div class="result-text" id="resultText"></div>
+      <button class="btn-copy" onclick="copyText()">클립보드에 복사하기</button>
+      <div class="copy-ok" id="copyOk">✅ 복사되었습니다!</div>
+    </div>
+  </div>
+
+  <script>
+    function generate() {
+      var name = document.getElementById('name').value.trim();
+      var domain = document.getElementById('domain').value;
+      var taskType = document.getElementById('taskType').value.trim();
+      var topic = document.getElementById('topic').value.trim();
+      var tags = document.getElementById('tags').value.trim();
+      var sdt = document.getElementById('sdt').checked;
+      var levelEl = document.querySelector('input[name="level"]:checked');
+      var level = levelEl ? levelEl.value : '2';
+      var userName = name || '어르신';
+      var levels = {
+        '1': '별도의 도움 없이 스스로 과제를 완벽히 수행하셨습니다.',
+        '2': '간간이 구두로 설명을 드리자 무난하게 수행하셨습니다.',
+        '3': '지속적인 격려와 유도 질문을 통해 끝까지 참여하셨습니다.',
+        '4': '시각적인 시범과 설명을 반복하여 과제를 이해하고 수행하셨습니다.',
+        '5': '신체적 보조와 함께 단계별로 안내해 드려 활동을 마쳤습니다.'
+      };
+      var text = userName + ' 어르신은 오늘 [' + domain + '] 영역의 \'' + (taskType || '인지') + '\' 활동에 참여하셨습니다. ';
+      if (topic) text += '\'' + topic + '\' 주제로 진행된 활동에서 ';
+      if (sdt) text += '본인이 직접 활동을 선택하시며 높은 자기결정성과 적극성을 보이셨습니다. ';
+      text += (levels[level] || '') + ' ';
+      if (tags) text += '특히 "' + tags + '" 등의 긍정적인 반응을 보이며 즐거워하셨습니다.';
+      document.getElementById('resultText').textContent = text;
+      document.getElementById('resultBox').classList.add('visible');
+      document.getElementById('copyOk').classList.remove('visible');
+    }
+
+    function copyText() {
+      var text = document.getElementById('resultText').textContent;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+          document.getElementById('copyOk').classList.add('visible');
+        });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        document.getElementById('copyOk').classList.add('visible');
+      }
+    }
+  </script>
+</body>
+</html>
