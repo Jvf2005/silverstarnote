@@ -250,6 +250,63 @@
     .senior-mini-radar { margin-top: 8px; line-height: 0; }
     .radar-section-title { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px; }
     .radar-wrap { display: flex; justify-content: center; margin-bottom: 20px; }
+
+    /* ── Track 2 – Star system ───────────────────────────────────────────── */
+    .sd-tabs { display:flex; border-bottom:2px solid #e5e7eb; margin-bottom:16px; }
+    .sd-tab  { padding:9px 16px; font-size:13px; font-weight:500; color:#6b7280; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; flex-shrink:0; transition:color .15s; }
+    .sd-tab:hover { color:#374151; }
+    .sd-tab.active { color:#2563eb; border-bottom-color:#2563eb; font-weight:600; }
+
+    .track2-panel { padding:2px 0; }
+    .t2-box  { background:#f9fafb; border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+    .t2-label { font-size:11px; font-weight:600; color:#9ca3af; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+    .t2-stars-big { font-size:26px; font-weight:700; color:#f59e0b; line-height:1; }
+    .t2-sub  { font-size:12px; color:#6b7280; }
+    .t2-bar-wrap { background:#e5e7eb; border-radius:9999px; height:10px; margin:8px 0 3px; }
+    .t2-bar  { background:linear-gradient(90deg,#f59e0b,#fbbf24); border-radius:9999px; height:100%; transition:width .5s ease; }
+    .t2-hint { font-size:11px; color:#9ca3af; }
+    .t2-medal-wrap { display:flex; align-items:center; gap:14px; }
+    .t2-medal-icon { font-size:44px; }
+    .t2-medal-text { font-size:13px; color:#374151; line-height:1.7; }
+    .t2-season-item { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:9px 12px; margin-bottom:7px; display:flex; justify-content:space-between; align-items:center; }
+    .t2-season-name { font-size:12px; font-weight:600; color:#374151; }
+    .t2-season-stats { font-size:12px; color:#6b7280; }
+
+    /* Star preview box in record form */
+    .star-preview-box { display:none; background:linear-gradient(135deg,#fffbeb,#fef3c7); border:1.5px solid #fcd34d; border-radius:10px; padding:10px 14px; margin-top:10px; align-items:center; gap:10px; }
+    .star-preview-box.visible { display:flex; }
+    .star-preview-stars { font-size:19px; letter-spacing:1px; color:#f59e0b; }
+    .star-preview-text  { font-size:13px; color:#92400e; font-weight:500; }
+
+    /* Flying star animation */
+    .flying-star { position:fixed; font-size:22px; color:#f59e0b; pointer-events:none; z-index:9999; animation:flyUp .9s ease-out forwards; }
+    @keyframes flyUp {
+      0%   { opacity:1; transform:translate(0,0) scale(1) rotate(0deg); }
+      60%  { opacity:1; transform:translate(var(--dx,8px),-65px) scale(1.4) rotate(18deg); }
+      100% { opacity:0; transform:translate(var(--dx,8px),-130px) scale(.3) rotate(40deg); }
+    }
+
+    /* Praise toast */
+    .praise-toast { position:fixed; background:#1f2937; color:#fff; padding:7px 13px; border-radius:8px; font-size:13px; font-weight:500; z-index:9999; pointer-events:none; white-space:nowrap; transform:translateX(-50%); animation:toastIn .25s ease; }
+    .praise-toast.out { animation:toastOut .4s ease forwards; }
+    @keyframes toastIn  { from{opacity:0;transform:translateX(-50%) translateY(6px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+    @keyframes toastOut { to{opacity:0;transform:translateX(-50%) translateY(-10px)} }
+
+    /* Achievement overlay */
+    .ach-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.78); z-index:10000; justify-content:center; align-items:center; }
+    .ach-overlay.open { display:flex; animation:achFadeIn .3s ease; }
+    @keyframes achFadeIn { from{opacity:0} to{opacity:1} }
+    .ach-card { background:#fff; border-radius:24px; padding:40px 28px; text-align:center; max-width:320px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,.4); animation:achPopIn .4s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes achPopIn { from{transform:scale(.6);opacity:0} to{transform:scale(1);opacity:1} }
+    .ach-icon  { font-size:70px; margin-bottom:10px; }
+    .ach-name  { font-size:14px; font-weight:700; color:#374151; }
+    .ach-title { font-size:22px; font-weight:700; color:#1d4ed8; margin:6px 0; }
+    .ach-msg   { font-size:13px; color:#6b7280; line-height:1.6; margin-bottom:16px; }
+    .ach-btns  { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+
+    /* Firework particles */
+    .fw-particle { position:fixed; width:7px; height:7px; border-radius:50%; pointer-events:none; z-index:9998; animation:fwFly 1.1s ease-out forwards; }
+    @keyframes fwFly { 0%{opacity:1;transform:translate(0,0) scale(1)} 100%{opacity:0;transform:translate(var(--px),var(--py)) scale(0)} }
   </style>
 </head>
 <body>
@@ -501,24 +558,28 @@
           <div class="sdc-section">
             <div class="sdc-item">
               <label class="sdc-label">
-                <input type="checkbox" id="sdc-autonomy" onchange="updateScore()" />
+                <input type="checkbox" id="sdc-autonomy" onchange="onSdcChange('autonomy')" />
                 <span>① 미세자율성: 교재 색상, 도구 종류, 혹은 오늘의 목표치를 어르신이 스스로 결정하셨나요?</span>
               </label>
             </div>
             <div class="sdc-item">
               <label class="sdc-label">
-                <input type="checkbox" id="sdc-persistence" onchange="updateScore()" />
+                <input type="checkbox" id="sdc-persistence" onchange="onSdcChange('persistence')" />
                 <span>② 지속 의지: 문제가 어려워 고비가 왔음에도 포기하지 않고 끝까지 완수하셨나요?</span>
               </label>
             </div>
             <div class="sdc-item">
               <label class="sdc-label">
-                <input type="checkbox" id="sdc-relation" onchange="toggleRelationInput(); updateScore()" />
+                <input type="checkbox" id="sdc-relation" onchange="onSdcChange('relation')" />
                 <span>③ 관계성: 동료에게 도구를 양보하거나 밝은 미소로 감정적 유대감을 나누셨나요?</span>
               </label>
               <input type="text" id="sdc-relation-input" class="sdc-input" style="display:none" placeholder="어르신의 반응을 키워드로 입력하세요 (예: 환하게 웃으심, 먼저 말 걸어주심)" />
             </div>
           </div>
+        </div>
+        <div class="star-preview-box" id="star-preview-box">
+          <span class="star-preview-stars" id="star-preview-stars"></span>
+          <span class="star-preview-text" id="star-preview-text"></span>
         </div>
         <div class="field">
           <label>특이사항 및 반응</label>
@@ -578,15 +639,24 @@
         <div class="senior-detail-row"><span class="senior-detail-key">생년월일</span><span class="senior-detail-val" id="sd-birth"></span></div>
         <div class="senior-detail-row"><span class="senior-detail-key">특이사항</span><span class="senior-detail-val" id="sd-notes"></span></div>
       </div>
-      <div id="sd-radar-wrap" style="display:none;">
-        <div class="radar-section-title">📊 SNSB 5영역 인지 프로파일</div>
-        <div id="sd-radar-chart" class="radar-wrap"></div>
+      <div class="sd-tabs">
+        <div class="sd-tab active" id="sd-tab-track1" onclick="switchDetailTab('track1')">📊 수행 기록</div>
+        <div class="sd-tab" id="sd-tab-track2" onclick="switchDetailTab('track2')">⭐ 성장 여정</div>
       </div>
-      <div class="detail-section-header">
-        <div class="section-title" style="margin:0;">📋 관찰 기록</div>
-        <button class="btn-sm" id="sd-active-btn" onclick="toggleSeniorActive()"></button>
+      <div id="sd-pane-track1">
+        <div id="sd-radar-wrap" style="display:none;">
+          <div class="radar-section-title">📊 SNSB 5영역 인지 프로파일</div>
+          <div id="sd-radar-chart" class="radar-wrap"></div>
+        </div>
+        <div class="detail-section-header">
+          <div class="section-title" style="margin:0;">📋 관찰 기록</div>
+          <button class="btn-sm" id="sd-active-btn" onclick="toggleSeniorActive()"></button>
+        </div>
+        <div id="sd-records" class="rec-list"></div>
       </div>
-      <div id="sd-records" class="rec-list"></div>
+      <div id="sd-pane-track2" style="display:none;">
+        <div id="sd-track2-content"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -609,6 +679,17 @@
       <div style="background:#f9fafb;border-radius:10px;padding:16px;font-size:15px;color:#1f2937;line-height:1.9;margin-bottom:16px;" id="rd-text"></div>
       <div style="font-size:13px;color:#6b7280;">작성자: <strong id="rd-user"></strong></div>
     </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ ACHIEVEMENT OVERLAY ════════════════════════════ -->
+<div id="ach-overlay" class="ach-overlay" onclick="closeAchievement(event)">
+  <div class="ach-card" onclick="event.stopPropagation()">
+    <div class="ach-icon" id="ach-icon"></div>
+    <div class="ach-name" id="ach-name"></div>
+    <div class="ach-title" id="ach-title"></div>
+    <div class="ach-msg" id="ach-msg"></div>
+    <div class="ach-btns" id="ach-btns"></div>
   </div>
 </div>
 
@@ -1118,6 +1199,7 @@ var _detailSenior = null;
 async function openSeniorDetail(sid) {
   _detailSenior=null;
   openModal('modal-sdetail');
+  switchDetailTab('track1');
   document.getElementById('sd-records').innerHTML='<div style="text-align:center;color:#9ca3af;padding:16px;font-size:14px;">불러오는 중…</div>';
   try {
     const senior=await dbOne('seniors',{senior_id:sid});
@@ -1205,6 +1287,7 @@ async function initRecordForm() {
     sel.value=''; _selectedSenior=null;
     document.getElementById('rec-result-box').classList.remove('visible');
     document.getElementById('rec-saved').classList.remove('visible');
+    const spb = document.getElementById('star-preview-box'); if(spb) spb.classList.remove('visible');
   } catch(e) { console.error(e); }
 }
 
@@ -1257,6 +1340,247 @@ function initHelpLevel() {
   if (defaultBtn) selectHelpLevel(defaultBtn);
 }
 
+// ── TRACK 2: STAR SYSTEM ─────────────────────────────────────────────────────
+function getMedal(n) {
+  if (n >= 200) return '👑';
+  if (n >= 100) return '🥇';
+  if (n >= 50)  return '🥈';
+  if (n >= 20)  return '🥉';
+  return '';
+}
+function getMedalName(m) {
+  return {'👑':'왕관','🥇':'금메달','🥈':'은메달','🥉':'동메달','':'없음'}[m]||'없음';
+}
+function nextMedalHint(n) {
+  if (n >= 200) return '👑 최고 등급 달성!';
+  if (n >= 100) return '👑 왕관까지 '+(200-n)+'개 남음';
+  if (n >= 50)  return '🥇 금메달까지 '+(100-n)+'개 남음';
+  if (n >= 20)  return '🥈 은메달까지 '+(50-n)+'개 남음';
+  return '🥉 동메달까지 '+(20-n)+'개 남음';
+}
+
+function calcSessionStars() {
+  let s = 1;
+  if (document.getElementById('sdc-autonomy')?.checked)    s += 1;
+  if (document.getElementById('sdc-persistence')?.checked) s += 2;
+  if (document.getElementById('sdc-relation')?.checked)    s += 1;
+  return s;
+}
+
+function onSdcChange(type) {
+  if (type === 'relation') toggleRelationInput();
+  updateScore();
+  const cb = document.getElementById('sdc-' + type);
+  if (cb.checked) {
+    const msgs   = { autonomy:'스스로 결정하셨어요! ★', persistence:'포기하지 않으셨어요! ★★', relation:'따뜻한 마음을 나누셨어요! ★' };
+    const counts = { autonomy:1, persistence:2, relation:1 };
+    showPraiseToast(msgs[type], cb);
+    flyStarAnimation(cb, counts[type]);
+  }
+  updateStarPreview();
+}
+
+function updateStarPreview() {
+  const stars = calcSessionStars();
+  const box = document.getElementById('star-preview-box');
+  const starsEl = document.getElementById('star-preview-stars');
+  const textEl  = document.getElementById('star-preview-text');
+  if (!box) return;
+  box.classList.add('visible');
+  starsEl.textContent = '★'.repeat(stars);
+  textEl.textContent  = '저장 시 ' + stars + '개의 별을 획득해요!';
+}
+
+function flyStarAnimation(fromEl, count) {
+  const rect = fromEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2, cy = rect.top;
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'flying-star';
+      const dx = (Math.random() - 0.5) * 60;
+      el.style.cssText = 'left:'+cx+'px;top:'+cy+'px;--dx:'+dx+'px;';
+      el.textContent = '★';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 950);
+    }, i * 160);
+  }
+}
+
+function showPraiseToast(msg, anchorEl) {
+  const old = document.querySelector('.praise-toast');
+  if (old) old.remove();
+  const rect = anchorEl.getBoundingClientRect();
+  const t = document.createElement('div');
+  t.className = 'praise-toast';
+  t.textContent = msg;
+  t.style.cssText = 'left:'+(rect.left+rect.width/2)+'px;top:'+(rect.top-46)+'px;';
+  document.body.appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 400); }, 2200);
+}
+
+function spawnFireworks() {
+  const colors = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#a855f7','#ec4899'];
+  const cx = window.innerWidth/2, cy = window.innerHeight/3;
+  for (let i = 0; i < 48; i++) {
+    setTimeout(() => {
+      const p = document.createElement('div');
+      p.className = 'fw-particle';
+      const angle = Math.random()*Math.PI*2, dist = 80+Math.random()*180;
+      const ox = (Math.random()-0.5)*120, oy = (Math.random()-0.5)*80;
+      p.style.cssText = 'left:'+(cx+ox)+'px;top:'+(cy+oy)+'px;background:'+colors[i%colors.length]+';--px:'+(Math.cos(angle)*dist)+'px;--py:'+(Math.sin(angle)*dist)+'px;';
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 1150);
+    }, Math.random()*700);
+  }
+}
+
+function showAchievement(icon, name, title, msg, btnsHtml) {
+  document.getElementById('ach-icon').textContent  = icon;
+  document.getElementById('ach-name').textContent  = name;
+  document.getElementById('ach-title').textContent = title;
+  document.getElementById('ach-msg').textContent   = msg;
+  document.getElementById('ach-btns').innerHTML    = btnsHtml;
+  document.getElementById('ach-overlay').classList.add('open');
+}
+function closeAchievement(e) {
+  if (!e || e.target === document.getElementById('ach-overlay'))
+    document.getElementById('ach-overlay').classList.remove('open');
+}
+
+function printCertificate(seniorName, medal, constellations) {
+  const medalName = getMedalName(medal);
+  const dateStr   = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+  const w = window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>성장 수료증</title>'
+    +'<style>body{font-family:serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f3f4f6}'
+    +'.cert{background:#fff;width:540px;padding:60px 50px;border:6px double #2563eb;border-radius:4px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.12)}'
+    +'.t{font-size:12px;letter-spacing:4px;color:#6b7280;margin-bottom:6px}'
+    +'.main{font-size:30px;font-weight:700;color:#1d4ed8;letter-spacing:6px;margin:10px 0}'
+    +'.medal{font-size:64px;margin:14px 0}'
+    +'.name{font-size:26px;font-weight:700;border-bottom:2px solid #111;display:inline-block;padding-bottom:3px;margin:14px 0 6px}'
+    +'.body{font-size:14px;color:#374151;line-height:2;margin:12px 0}'
+    +'.date{font-size:12px;color:#9ca3af;margin-top:20px}'
+    +'.org{font-size:14px;font-weight:700;color:#374151;margin-top:4px}'
+    +'@media print{body{background:#fff}.cert{box-shadow:none}}'
+    +'</style></head><body><div class="cert">'
+    +'<div class="t">성장 수료증 · CERTIFICATE OF ACHIEVEMENT</div>'
+    +'<div class="main">실버스타노트</div>'
+    +'<div class="medal">'+medal+'</div>'
+    +'<div class="name">'+seniorName+' 어르신</div>'
+    +'<div class="body">위 어르신은 실버스타노트 인지 훈련 프로그램에<br>꾸준히 참여하시어 별자리 <strong>'+constellations+'개</strong>를 획득하고<br><strong>'+medalName+'</strong>를 달성하셨습니다.</div>'
+    +'<div class="date">'+dateStr+'</div>'
+    +'<div class="org">🌟 실버스타노트</div>'
+    +'</div><script>setTimeout(()=>window.print(),500);<\/script></body></html>');
+  w.document.close();
+}
+
+async function awardStars(senior, earned) {
+  const prevStars = senior.total_stars || 0;
+  const prevConst = senior.total_constellations || 0;
+  const prevMedal = getMedal(prevConst);
+  const newStars  = prevStars + earned;
+  const newConst  = Math.floor(newStars / 5);
+  const newMedal  = getMedal(newConst);
+  const updates   = { total_stars: newStars, total_constellations: newConst, current_medal: newMedal };
+  if (!senior.season_start_date) updates.season_start_date = new Date().toISOString().slice(0,10);
+  try {
+    await dbUpdate('seniors','senior_id',senior.senior_id, updates);
+    if (_detailSenior && _detailSenior.senior_id === senior.senior_id) {
+      Object.assign(_detailSenior, updates);
+    }
+    if (newMedal && newMedal !== prevMedal) {
+      spawnFireworks();
+      showAchievement(newMedal, senior.name+' 어르신', getMedalName(newMedal)+' 획득!',
+        '별자리 '+newConst+'개를 모아 '+getMedalName(newMedal)+'를 획득하셨어요!',
+        '<button class="btn-primary" onclick="closeAchievement()" style="max-width:160px;font-size:14px;">감사합니다!</button>'
+        +'<button class="btn-secondary" onclick="printCertificate(\''+senior.name+'\',\''+newMedal+'\','+newConst+');closeAchievement()" style="font-size:14px;">🖨 상장 출력</button>');
+    } else if (newConst > prevConst) {
+      spawnFireworks();
+      showAchievement('✨', senior.name+' 어르신', '별자리 완성!',
+        '별 5개를 모아 '+newConst+'번째 별자리가 완성되었어요!',
+        '<button class="btn-primary" onclick="closeAchievement()" style="max-width:180px;font-size:14px;">축하합니다! ✨</button>');
+    }
+  } catch(e) { console.warn('별 업데이트 실패:', e.message); }
+}
+
+function switchDetailTab(tab) {
+  ['track1','track2'].forEach(t => {
+    document.getElementById('sd-tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('sd-pane-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+  if (tab==='track2' && _detailSenior) loadTrack2(_detailSenior);
+}
+
+async function loadTrack2(senior) {
+  const el = document.getElementById('sd-track2-content');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;color:#9ca3af;padding:20px;font-size:14px;">불러오는 중…</div>';
+  try {
+    const recs = await dbAll('records',{senior_id:senior.senior_id});
+    el.innerHTML = renderTrack2(senior, recs);
+  } catch(e) { el.innerHTML='<div style="color:#ef4444;padding:12px;">불러오기 실패</div>'; }
+}
+
+function renderTrack2(senior, recs) {
+  const totalStars = senior.total_stars || 0;
+  const totalConst = senior.total_constellations || 0;
+  const medal = senior.current_medal || getMedal(totalConst);
+
+  const seasonStart = senior.season_start_date ? new Date(senior.season_start_date) : null;
+  const now = new Date();
+  let seasonNum = 1;
+  if (seasonStart) {
+    const months = (now.getFullYear()-seasonStart.getFullYear())*12 + now.getMonth()-seasonStart.getMonth();
+    seasonNum = Math.floor(months/3)+1;
+  }
+  const currentSeasonStart = seasonStart ? (() => { const d=new Date(seasonStart); d.setMonth(d.getMonth()+(seasonNum-1)*3); return d; })() : now;
+  const seasonRecs = recs.filter(r => r.stars && new Date(r.created_at) >= currentSeasonStart);
+  const seasonStars = seasonRecs.reduce((sum,r) => sum+(r.stars||0), 0);
+  const starsInProgress = seasonStars % 5;
+  const starsToNext = starsInProgress===0 ? 5 : 5-starsInProgress;
+  const barPct = starsInProgress/5*100;
+  const seasonConst = Math.floor(seasonStars/5);
+  const starsVisual = '★'.repeat(starsInProgress)+'☆'.repeat(5-starsInProgress);
+  const constVisual = '✦'.repeat(Math.min(seasonConst,15))+(seasonConst>15?'…':'');
+
+  const medalHtml = medal
+    ? '<div class="t2-box"><div class="t2-label">🏅 현재 메달</div><div class="t2-medal-wrap"><div class="t2-medal-icon">'+medal+'</div><div class="t2-medal-text"><strong style="font-size:16px;">'+getMedalName(medal)+'</strong><br>누적 별자리 '+totalConst+'개<br><span style="color:#9ca3af;font-size:11px;">'+nextMedalHint(totalConst)+'</span></div></div></div>'
+    : '<div class="t2-box"><div class="t2-label">🏅 현재 메달</div><div style="color:#9ca3af;font-size:13px;">아직 메달이 없어요<br><span style="color:#374151;font-weight:600;">누적 별자리 '+totalConst+'개 · '+nextMedalHint(totalConst)+'</span></div></div>';
+
+  const histHtml = buildSeasonHistory(senior, recs, seasonNum);
+
+  return '<div class="track2-panel">'
+    +'<div class="t2-box"><div class="t2-label">⭐ 시즌 '+seasonNum+' 진행 중</div>'
+    +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;"><span class="t2-stars-big">'+seasonStars+'</span><span class="t2-sub">개 / 이번 시즌</span></div>'
+    +'<div style="font-size:18px;letter-spacing:2px;color:#f59e0b;margin-bottom:6px;">'+starsVisual+'</div>'
+    +'<div class="t2-bar-wrap"><div class="t2-bar" style="width:'+barPct+'%"></div></div>'
+    +'<div class="t2-hint">다음 별자리까지 ★'+starsToNext+'개 남아요</div></div>'
+    +'<div class="t2-box"><div class="t2-label">✦ 이번 시즌 별자리</div>'
+    +'<div style="font-size:22px;letter-spacing:3px;color:#6366f1;min-height:28px;">'+(constVisual||'<span style="color:#d1d5db;font-size:13px;">아직 없어요</span>')+'</div>'
+    +'<div style="font-size:13px;color:#374151;font-weight:600;margin-top:6px;">'+seasonConst+'개 완성</div></div>'
+    + medalHtml + histHtml
+    +'</div>';
+}
+
+function buildSeasonHistory(senior, recs, currentSeasonNum) {
+  const startDate = senior.season_start_date ? new Date(senior.season_start_date) : null;
+  if (!startDate || currentSeasonNum <= 1) return '';
+  let html = '<div class="t2-box"><div class="t2-label">📦 역대 시즌 기록</div>';
+  for (let s = currentSeasonNum; s >= 1; s--) {
+    const sStart = new Date(startDate);
+    sStart.setMonth(sStart.getMonth()+(s-1)*3);
+    const sEnd = new Date(sStart);
+    sEnd.setMonth(sEnd.getMonth()+3);
+    const sRecs = recs.filter(r => { const d=new Date(r.created_at); return r.stars && d>=sStart && d<sEnd; });
+    const sStars = sRecs.reduce((sum,r) => sum+(r.stars||0), 0);
+    const sConst = Math.floor(sStars/5);
+    const tag = s===currentSeasonNum ? ' <span style="background:#dbeafe;color:#1e40af;font-size:10px;padding:1px 6px;border-radius:8px;">진행중</span>' : '';
+    html += '<div class="t2-season-item"><span class="t2-season-name">시즌 '+s+tag+'</span><span class="t2-season-stats">★'+sStars+' · ✦'+sConst+'</span></div>';
+  }
+  return html+'</div>';
+}
+
 function generateRecord() {
   if (!_selectedSenior) { alert('어르신을 먼저 선택해주세요.'); return; }
   const domain   = document.getElementById('rec-domain').value;
@@ -1295,6 +1619,7 @@ async function saveRecord() {
   setBtnLoading('save-rec-btn', true);
   try {
     const user=await dbOne('users',{user_id:session.user_id});
+    const stars = calcSessionStars();
     await dbInsert('records',{
       record_id:genId('REC'),
       senior_id:_selectedSenior.senior_id, senior_name:_selectedSenior.name,
@@ -1308,12 +1633,15 @@ async function saveRecord() {
         (document.getElementById('sdc-autonomy').checked?5:0)+
         (document.getElementById('sdc-persistence').checked?5:0)+
         (document.getElementById('sdc-relation').checked?5:0)),
+      stars,
       tags:document.getElementById('rec-tags').value.trim(),
       text, created_at:new Date().toISOString()
     });
     document.getElementById('rec-saved').classList.add('visible');
+    await awardStars(_selectedSenior, stars);
     if (_detailSenior && _detailSenior.senior_id === _selectedSenior.senior_id) {
       renderSeniorRecords(_detailSenior.senior_id);
+      if (document.getElementById('sd-pane-track2')?.style.display !== 'none') loadTrack2(_detailSenior);
     }
   } catch(e) { alert('저장 실패: '+e.message); console.error(e); }
   finally    { setBtnLoading('save-rec-btn', false); }
