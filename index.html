@@ -225,6 +225,11 @@
     .rec-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
     .rec-saved { font-size: 13px; color: #16a34a; display: none; }
     .rec-saved.visible { display: inline; }
+
+    /* ── Radar chart ─────────────────────────────────────────────────────── */
+    .senior-mini-radar { margin-top: 8px; line-height: 0; }
+    .radar-section-title { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+    .radar-wrap { display: flex; justify-content: center; margin-bottom: 20px; }
   </style>
 </head>
 <body>
@@ -536,6 +541,10 @@
       <div class="senior-detail-info">
         <div class="senior-detail-row"><span class="senior-detail-key">생년월일</span><span class="senior-detail-val" id="sd-birth"></span></div>
         <div class="senior-detail-row"><span class="senior-detail-key">특이사항</span><span class="senior-detail-val" id="sd-notes"></span></div>
+      </div>
+      <div id="sd-radar-wrap" style="display:none;">
+        <div class="radar-section-title">📊 SNSB 5영역 인지 프로파일</div>
+        <div id="sd-radar-chart" class="radar-wrap"></div>
       </div>
       <div class="detail-section-header">
         <div class="section-title" style="margin:0;">📋 관찰 기록</div>
@@ -896,19 +905,121 @@ function copyInviteCode() {
   });
 }
 
+// ── SNSB RADAR CHART ─────────────────────────────────────────────────────────
+const SNSB_DOMAINS = [
+  { key:'attention',    label:'주의집중력',        match:'주의집중력' },
+  { key:'language',     label:'언어 및 관련 기능',  match:'언어 및 관련 기능' },
+  { key:'visuospatial', label:'시공간 구성 능력',   match:'시공간 구성' },
+  { key:'memory',       label:'기억력',             match:'기억력' },
+  { key:'executive',    label:'전두엽/집행 기능',   match:'전두엽' },
+];
+
+function extractSnsbScores(recs) {
+  const scores = {};
+  SNSB_DOMAINS.forEach(d => {
+    const latest = recs
+      .filter(r => r.domain && r.domain.includes(d.match) && r.score != null)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+    scores[d.key] = latest ? latest.score : null;
+  });
+  return scores;
+}
+
+function radarSVG(scores, small) {
+  const N = 5;
+  const cx = small ? 40 : 120, cy = small ? 40 : 130;
+  const maxR = small ? 30 : 85, labelR = 115;
+  const sw = small ? 1 : 1.8;
+  const vb = small ? '0 0 80 80' : '-65 -20 360 295';
+  const szAttr = small ? 'width="80" height="80"' : 'style="width:100%;max-width:260px;"';
+
+  function vtx(i, r) {
+    const a = -Math.PI/2 + i * 2 * Math.PI / N;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  }
+  function toPath(pts, close) {
+    return pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join('') + (close ? 'Z' : '');
+  }
+
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" ${szAttr}>`;
+
+  // Grid rings
+  [0.25, 0.5, 0.75, 1.0].forEach(f => {
+    const pts = Array.from({length: N}, (_, i) => vtx(i, maxR * f));
+    s += `<path d="${toPath(pts, true)}" fill="none" stroke="#e5e7eb" stroke-width="${small ? 0.7 : 1}"/>`;
+  });
+
+  // Axis lines
+  for (let i = 0; i < N; i++) {
+    const [x, y] = vtx(i, maxR);
+    s += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#e5e7eb" stroke-width="${small ? 0.7 : 1}"/>`;
+  }
+
+  // Data polygon
+  const dataPts = SNSB_DOMAINS.map((d, i) => {
+    const sc = scores[d.key];
+    return vtx(i, sc != null ? (sc / 100) * maxR : 0);
+  });
+  s += `<path d="${toPath(dataPts, true)}" fill="rgba(37,99,235,0.15)" stroke="#2563eb" stroke-width="${sw}"/>`;
+
+  // Per-domain markers
+  SNSB_DOMAINS.forEach((d, i) => {
+    if (scores[d.key] == null) {
+      const [x, y] = vtx(i, maxR);
+      s += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#9ca3af" stroke-width="${sw}" stroke-dasharray="3,2"/>`;
+    } else {
+      const [px, py] = dataPts[i];
+      s += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${small ? 2.5 : 3.5}" fill="#2563eb"/>`;
+    }
+  });
+
+  // Labels (large only)
+  if (!small) {
+    SNSB_DOMAINS.forEach((d, i) => {
+      const [lx, ly] = vtx(i, labelR);
+      const cosA = Math.cos(-Math.PI/2 + i * 2 * Math.PI / N);
+      const anch = cosA > 0.15 ? 'start' : cosA < -0.15 ? 'end' : 'middle';
+      const sc = scores[d.key];
+      const scoreStr = sc != null ? sc + '점' : '기록없음';
+      const scoreColor = sc != null ? '#1d4ed8' : '#9ca3af';
+      s += `<text text-anchor="${anch}" font-size="10" font-family="'Noto Sans KR',sans-serif">` +
+           `<tspan x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" fill="#374151">${d.label}</tspan>` +
+           `<tspan x="${lx.toFixed(1)}" dy="14" fill="${scoreColor}" font-weight="700">${scoreStr}</tspan>` +
+           `</text>`;
+    });
+  }
+
+  s += '</svg>';
+  return s;
+}
+
+function renderSnsbChart(recs) {
+  const wrap = document.getElementById('sd-radar-wrap');
+  const chartEl = document.getElementById('sd-radar-chart');
+  if (!wrap || !chartEl) return;
+  const scores = extractSnsbScores(recs);
+  const hasAny = SNSB_DOMAINS.some(d => scores[d.key] != null);
+  wrap.style.display = hasAny ? 'block' : 'none';
+  chartEl.innerHTML = hasAny ? radarSVG(scores, false) : '';
+}
+
 // ── SENIOR LIST ───────────────────────────────────────────────────────────────
 function seniorCardHTML(s, recs) {
-  const last=recs.filter(r=>r.senior_id===s.senior_id).sort((a,b)=>b.created_at.localeCompare(a.created_at))[0];
-  const age=calcAge(s.birth_date), gender=s.gender==='m'?'남성':'여성';
-  const avatarCls='senior-avatar'+(s.gender==='f'?' f':'');
-  return '<div class="senior-card'+(s.is_active?'':' inactive')+'" onclick="openSeniorDetail(\''+s.senior_id+'\')">'+
-    '<div class="'+avatarCls+'">'+s.name.charAt(0)+'</div>'+
-    '<div class="senior-info">'+
-      '<div class="senior-name">'+s.name+' 어르신'+(s.is_active?'':' <span style="font-size:11px;color:#9ca3af;">(퇴소)</span>')+'</div>'+
-      '<div class="senior-meta">만 '+age+'세 · '+gender+'</div>'+
-      '<div class="senior-last">최근 기록: '+(last?fmtDate(last.created_at):'없음')+'</div>'+
-    '</div>'+
-    '<div class="senior-chevron">›</div>'+
+  const seniorRecs = recs.filter(r => r.senior_id === s.senior_id);
+  const last = seniorRecs.slice().sort((a,b) => b.created_at.localeCompare(a.created_at))[0];
+  const scores = extractSnsbScores(seniorRecs);
+  const hasAny = SNSB_DOMAINS.some(d => scores[d.key] != null);
+  const age = calcAge(s.birth_date), gender = s.gender === 'm' ? '남성' : '여성';
+  const avatarCls = 'senior-avatar' + (s.gender === 'f' ? ' f' : '');
+  return '<div class="senior-card' + (s.is_active ? '' : ' inactive') + '" onclick="openSeniorDetail(\'' + s.senior_id + '\')">' +
+    '<div class="' + avatarCls + '">' + s.name.charAt(0) + '</div>' +
+    '<div class="senior-info">' +
+      '<div class="senior-name">' + s.name + ' 어르신' + (s.is_active ? '' : ' <span style="font-size:11px;color:#9ca3af;">(퇴소)</span>') + '</div>' +
+      '<div class="senior-meta">만 ' + age + '세 · ' + gender + '</div>' +
+      '<div class="senior-last">최근 기록: ' + (last ? fmtDate(last.created_at) : '없음') + '</div>' +
+      (hasAny ? '<div class="senior-mini-radar">' + radarSVG(scores, true) + '</div>' : '') +
+    '</div>' +
+    '<div class="senior-chevron">›</div>' +
   '</div>';
 }
 
@@ -995,6 +1106,7 @@ async function renderSeniorRecords(sid) {
   try {
     const recs=await dbAll('records',{senior_id:sid});
     recs.sort((a,b)=>b.created_at.localeCompare(a.created_at));
+    renderSnsbChart(recs);
     if (!recs.length) { el.innerHTML='<div style="text-align:center;color:#9ca3af;padding:24px;font-size:14px;">아직 관찰 기록이 없습니다.</div>'; return; }
     el.innerHTML=recs.map(r=>
       '<div class="rec-item" onclick="openRecordDetail(\''+r.record_id+'\')">'+
@@ -1158,6 +1270,9 @@ async function saveRecord() {
       text, created_at:new Date().toISOString()
     });
     document.getElementById('rec-saved').classList.add('visible');
+    if (_detailSenior && _detailSenior.senior_id === _selectedSenior.senior_id) {
+      renderSeniorRecords(_detailSenior.senior_id);
+    }
   } catch(e) { alert('저장 실패: '+e.message); console.error(e); }
   finally    { setBtnLoading('save-rec-btn', false); }
 }
