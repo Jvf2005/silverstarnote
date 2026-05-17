@@ -115,6 +115,44 @@
     /* Record form */
     .radio-group { background: #f9fafb; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
     .radio-label { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #374151; cursor: pointer; }
+
+    /* Help level button group */
+    .help-level-wrapper { display: flex; flex-direction: column; gap: 10px; }
+    .help-level-buttons { display: flex; gap: 8px; }
+    .help-level-btn {
+      flex: 1; padding: 10px 6px; border: 2px solid #d1d5db; border-radius: 10px;
+      background: #f9fafb; cursor: pointer; font-size: 13px; font-weight: 600;
+      color: #6b7280; text-align: center; line-height: 1.4; transition: all 0.2s;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+    }
+    .help-level-btn .btn-label { font-size: 12px; font-weight: 700; }
+    .help-level-btn .btn-sub { font-size: 11px; font-weight: 400; color: #9ca3af; }
+    .help-level-btn:hover { border-color: #9ca3af; background: #f3f4f6; }
+    .help-level-btn.active-red   { border-color: #ef4444; background: #fef2f2; color: #b91c1c; }
+    .help-level-btn.active-red .btn-sub { color: #ef4444; }
+    .help-level-btn.active-orange { border-color: #f97316; background: #fff7ed; color: #c2410c; }
+    .help-level-btn.active-orange .btn-sub { color: #f97316; }
+    .help-level-btn.active-yellow { border-color: #eab308; background: #fefce8; color: #854d0e; }
+    .help-level-btn.active-yellow .btn-sub { color: #ca8a04; }
+    .help-level-btn.active-green  { border-color: #22c55e; background: #f0fdf4; color: #15803d; }
+    .help-level-btn.active-green .btn-sub { color: #22c55e; }
+    .help-level-bar-wrap {
+      background: #e5e7eb; border-radius: 9999px; height: 14px;
+      position: relative; overflow: hidden;
+    }
+    .help-level-bar {
+      height: 100%; border-radius: 9999px; width: 0%;
+      transition: width 0.35s ease, background-color 0.35s ease;
+    }
+    .help-level-score {
+      font-size: 13px; font-weight: 700; color: #374151; text-align: right;
+      min-height: 18px; transition: color 0.2s;
+    }
+    @media (max-width: 480px) {
+      .help-level-btn { padding: 8px 4px; font-size: 11px; }
+      .help-level-btn .btn-label { font-size: 11px; }
+      .help-level-btn .btn-sub { font-size: 10px; }
+    }
     .check-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
     .check-row label { font-size: 14px; color: #374151; cursor: pointer; }
     .result-box { display: none; margin-top: 22px; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 20px; }
@@ -383,13 +421,31 @@
         <div class="row">
           <div class="field">
             <label>도움 수준</label>
-            <div class="radio-group">
-              <label class="radio-label"><input type="radio" name="rec-level" value="1" /> 독립적 수행 (도움 없음)</label>
-              <label class="radio-label"><input type="radio" name="rec-level" value="2" checked /> 구두 힌트 (가끔 설명)</label>
-              <label class="radio-label"><input type="radio" name="rec-level" value="3" /> 지속적 격려 (독려 필요)</label>
-              <label class="radio-label"><input type="radio" name="rec-level" value="4" /> 시각적 시범 (보여줘야 함)</label>
-              <label class="radio-label"><input type="radio" name="rec-level" value="5" /> 신체적 보조 (직접 도와드림)</label>
+            <div class="help-level-wrapper">
+              <div class="help-level-buttons">
+                <button type="button" class="help-level-btn" data-level="physical" data-score="40" data-color="red" onclick="selectHelpLevel(this)">
+                  <span class="btn-label">신체적 보조</span>
+                  <span class="btn-sub">직접 도와드림</span>
+                </button>
+                <button type="button" class="help-level-btn" data-level="visual" data-score="60" data-color="orange" onclick="selectHelpLevel(this)">
+                  <span class="btn-label">시각적 시범</span>
+                  <span class="btn-sub">보여줘야 함</span>
+                </button>
+                <button type="button" class="help-level-btn" data-level="verbal" data-score="80" data-color="yellow" onclick="selectHelpLevel(this)">
+                  <span class="btn-label">구두 힌트</span>
+                  <span class="btn-sub">가끔 설명</span>
+                </button>
+                <button type="button" class="help-level-btn" data-level="independent" data-score="100" data-color="green" onclick="selectHelpLevel(this)">
+                  <span class="btn-label">독립적 수행</span>
+                  <span class="btn-sub">도움 없음</span>
+                </button>
+              </div>
+              <div class="help-level-bar-wrap">
+                <div class="help-level-bar" id="help-level-bar"></div>
+              </div>
+              <div class="help-level-score" id="help-level-score"></div>
             </div>
+            <input type="hidden" id="rec-level" value="verbal" />
           </div>
           <div class="field">
             <label>참여도</label>
@@ -987,6 +1043,29 @@ function onSelectSenior(sid) {
   _selectedSenior=_seniorsForForm.find(s=>s.senior_id===sid)||null;
 }
 
+function selectHelpLevel(btn) {
+  document.querySelectorAll('.help-level-btn').forEach(b => {
+    b.classList.remove('active-red','active-orange','active-yellow','active-green');
+  });
+  const color = btn.dataset.color;
+  const score = parseInt(btn.dataset.score);
+  const level = btn.dataset.level;
+  btn.classList.add('active-' + color);
+  document.getElementById('rec-level').value = level;
+  const bar = document.getElementById('help-level-bar');
+  const scoreEl = document.getElementById('help-level-score');
+  const colorMap = { red:'#ef4444', orange:'#f97316', yellow:'#eab308', green:'#22c55e' };
+  bar.style.width = score + '%';
+  bar.style.backgroundColor = colorMap[color];
+  scoreEl.textContent = score + '점';
+  scoreEl.style.color = colorMap[color];
+}
+
+function initHelpLevel() {
+  const defaultBtn = document.querySelector('.help-level-btn[data-level="verbal"]');
+  if (defaultBtn) selectHelpLevel(defaultBtn);
+}
+
 function generateRecord() {
   if (!_selectedSenior) { alert('어르신을 먼저 선택해주세요.'); return; }
   const domain   = document.getElementById('rec-domain').value;
@@ -994,7 +1073,7 @@ function generateRecord() {
   const topic    = document.getElementById('rec-topic').value.trim();
   const tags     = document.getElementById('rec-tags').value.trim();
   const participation = (document.querySelector('input[name="rec-participation"]:checked')||{}).value||'normal';
-  const level         = (document.querySelector('input[name="rec-level"]:checked')||{}).value||'2';
+  const level         = document.getElementById('rec-level').value || 'verbal';
   const partTexts = {
     'self':      '스스로 적극적으로 활동에 참여하며 높은 자기주도성을 보이셨습니다.',
     'active':    '활동 내내 높은 집중력과 적극적인 참여를 보이셨습니다.',
@@ -1003,11 +1082,10 @@ function generateRecord() {
     'difficult': '활동 참여에 어려움을 보이셔서 충분한 지원이 제공되었습니다.'
   };
   const levels = {
-    '1':'별도의 도움 없이 스스로 과제를 완벽히 수행하셨습니다.',
-    '2':'간간이 구두로 설명을 드리자 무난하게 수행하셨습니다.',
-    '3':'지속적인 격려와 유도 질문을 통해 끝까지 참여하셨습니다.',
-    '4':'시각적인 시범과 설명을 반복하여 과제를 이해하고 수행하셨습니다.',
-    '5':'신체적 보조와 함께 단계별로 안내해 드려 활동을 마쳤습니다.'
+    'physical':    '신체적 보조와 함께 단계별로 안내해 드려 활동을 마쳤습니다.',
+    'visual':      '시각적인 시범과 설명을 반복하여 과제를 이해하고 수행하셨습니다.',
+    'verbal':      '간간이 구두로 설명을 드리자 무난하게 수행하셨습니다.',
+    'independent': '별도의 도움 없이 스스로 과제를 완벽히 수행하셨습니다.'
   };
   let text=_selectedSenior.name+' 어르신은 오늘 ['+domain+'] 영역의 \''+taskType+'\' 활동에 참여하셨습니다. ';
   if (topic) text+='\''+topic+'\' 주제로 진행된 활동에서 ';
@@ -1035,7 +1113,7 @@ async function saveRecord() {
       domain:document.getElementById('rec-domain').value,
       task_type:document.getElementById('rec-tasktype').value.trim(),
       topic:document.getElementById('rec-topic').value.trim(),
-      level:(document.querySelector('input[name="rec-level"]:checked')||{}).value||'2',
+      level:document.getElementById('rec-level').value||'verbal',
       participation:(document.querySelector('input[name="rec-participation"]:checked')||{}).value||'normal',
       tags:document.getElementById('rec-tags').value.trim(),
       text, created_at:new Date().toISOString()
@@ -1057,6 +1135,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('login-pw').addEventListener('keydown', function(e) {
     if (e.key==='Enter') doLogin();
   });
+  initHelpLevel();
 });
 
 (async function init() {
