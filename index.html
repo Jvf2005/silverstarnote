@@ -116,6 +116,26 @@
     .radio-group { background: #f9fafb; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
     .radio-label { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #374151; cursor: pointer; }
 
+    /* Domain icon selector */
+    .domain-grid { display: flex; gap: 8px; }
+    .domain-btn {
+      flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 5px; padding: 12px 4px;
+      border: 2px solid #e5e7eb; border-radius: 16px; background: #f9fafb;
+      cursor: pointer; transition: all 0.18s; font-family: inherit;
+    }
+    .domain-btn .domain-icon { font-size: 24px; line-height: 1; }
+    .domain-btn .domain-label { font-size: 10px; font-weight: 600; color: #6b7280; text-align: center; line-height: 1.35; word-break: keep-all; }
+    .domain-btn:hover { border-color: #93c5fd; background: #eff6ff; }
+    .domain-btn.active { border-color: #2563eb; background: #2563eb; transform: scale(1.06); }
+    .domain-btn.active .domain-label { color: #fff; }
+    @media (max-width: 520px) {
+      .domain-grid { gap: 5px; }
+      .domain-btn { padding: 8px 2px; gap: 3px; border-radius: 12px; }
+      .domain-btn .domain-icon { font-size: 18px; }
+      .domain-btn .domain-label { font-size: 9px; }
+    }
+
     /* Help level button group */
     .help-level-wrapper { display: flex; flex-direction: column; gap: 10px; }
     .help-level-buttons { display: flex; gap: 8px; }
@@ -411,25 +431,41 @@
             <option value="">-- 어르신을 선택하세요 --</option>
           </select>
         </div>
-        <div class="row">
-          <div class="field">
-            <label>인지 영역</label>
-            <select id="rec-domain">
-              <option>주의집중력 (Attention)</option>
-              <option>언어 및 관련 기능 (Language)</option>
-              <option>시공간 구성 능력 (Visuospatial)</option>
-              <option>기억력 (Memory)</option>
-              <option>전두엽/집행 기능 (Executive Function)</option>
-            </select>
+        <div class="field">
+          <label>인지 영역</label>
+          <div class="domain-grid">
+            <button type="button" class="domain-btn active" data-value="주의집중력 (Attention)" onclick="selectDomain(this)">
+              <span class="domain-icon">🎯</span>
+              <span class="domain-label">주의<br>집중력</span>
+            </button>
+            <button type="button" class="domain-btn" data-value="언어 및 관련 기능 (Language)" onclick="selectDomain(this)">
+              <span class="domain-icon">💬</span>
+              <span class="domain-label">언어 및<br>관련 기능</span>
+            </button>
+            <button type="button" class="domain-btn" data-value="시공간 구성 능력 (Visuospatial)" onclick="selectDomain(this)">
+              <span class="domain-icon">🧩</span>
+              <span class="domain-label">시공간<br>구성 능력</span>
+            </button>
+            <button type="button" class="domain-btn" data-value="기억력 (Memory)" onclick="selectDomain(this)">
+              <span class="domain-icon">🧠</span>
+              <span class="domain-label">기억력</span>
+            </button>
+            <button type="button" class="domain-btn" data-value="전두엽/집행 기능 (Executive Function)" onclick="selectDomain(this)">
+              <span class="domain-icon">⚡</span>
+              <span class="domain-label">전두엽/<br>집행 기능</span>
+            </button>
           </div>
+          <input type="hidden" id="rec-domain" value="주의집중력 (Attention)" />
+        </div>
+        <div class="row">
           <div class="field">
             <label>문제 유형</label>
             <input type="text" id="rec-tasktype" placeholder="예: 색칠하기, 미로찾기" />
           </div>
-        </div>
-        <div class="field">
-          <label>활동 주제</label>
-          <input type="text" id="rec-topic" placeholder="예: 고향 풍경, 시장 구경" />
+          <div class="field">
+            <label>활동 주제</label>
+            <input type="text" id="rec-topic" placeholder="예: 고향 풍경, 시장 구경" />
+          </div>
         </div>
         <div class="field">
           <label>도움 수준</label>
@@ -1174,6 +1210,12 @@ async function initRecordForm() {
 
 function onSelectSenior(sid) {
   _selectedSenior=_seniorsForForm.find(s=>s.senior_id===sid)||null;
+}
+
+function selectDomain(btn) {
+  document.querySelectorAll('.domain-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('rec-domain').value = btn.dataset.value;
 }
 
 function selectHelpLevel(btn) {
