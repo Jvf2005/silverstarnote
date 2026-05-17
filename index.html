@@ -153,6 +153,14 @@
       .help-level-btn .btn-label { font-size: 11px; }
       .help-level-btn .btn-sub { font-size: 10px; }
     }
+
+    /* Self-determination checkboxes */
+    .sdc-section { display: flex; flex-direction: column; gap: 10px; background: #f9fafb; border-radius: 8px; padding: 14px; }
+    .sdc-item { display: flex; flex-direction: column; gap: 6px; }
+    .sdc-label { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: #374151; cursor: pointer; line-height: 1.5; }
+    .sdc-label input[type="checkbox"] { flex-shrink: 0; margin-top: 2px; width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; }
+    .sdc-input { margin-top: 4px; margin-left: 26px; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; color: #374151; width: calc(100% - 26px); box-sizing: border-box; }
+    .sdc-input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.15); }
     .check-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
     .check-row label { font-size: 14px; color: #374151; cursor: pointer; }
     .result-box { display: none; margin-top: 22px; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 20px; }
@@ -418,43 +426,56 @@
           <label>활동 주제</label>
           <input type="text" id="rec-topic" placeholder="예: 고향 풍경, 시장 구경" />
         </div>
-        <div class="row">
-          <div class="field">
-            <label>도움 수준</label>
-            <div class="help-level-wrapper">
-              <div class="help-level-buttons">
-                <button type="button" class="help-level-btn" data-level="physical" data-score="40" data-color="red" onclick="selectHelpLevel(this)">
-                  <span class="btn-label">신체적 보조</span>
-                  <span class="btn-sub">직접 도와드림</span>
-                </button>
-                <button type="button" class="help-level-btn" data-level="visual" data-score="60" data-color="orange" onclick="selectHelpLevel(this)">
-                  <span class="btn-label">시각적 시범</span>
-                  <span class="btn-sub">보여줘야 함</span>
-                </button>
-                <button type="button" class="help-level-btn" data-level="verbal" data-score="80" data-color="yellow" onclick="selectHelpLevel(this)">
-                  <span class="btn-label">구두 힌트</span>
-                  <span class="btn-sub">가끔 설명</span>
-                </button>
-                <button type="button" class="help-level-btn" data-level="independent" data-score="100" data-color="green" onclick="selectHelpLevel(this)">
-                  <span class="btn-label">독립적 수행</span>
-                  <span class="btn-sub">도움 없음</span>
-                </button>
-              </div>
-              <div class="help-level-bar-wrap">
-                <div class="help-level-bar" id="help-level-bar"></div>
-              </div>
-              <div class="help-level-score" id="help-level-score"></div>
+        <div class="field">
+          <label>도움 수준</label>
+          <div class="help-level-wrapper">
+            <div class="help-level-buttons">
+              <button type="button" class="help-level-btn" data-level="physical" data-score="40" data-color="red" onclick="selectHelpLevel(this)">
+                <span class="btn-label">신체적 보조</span>
+                <span class="btn-sub">직접 도와드림</span>
+              </button>
+              <button type="button" class="help-level-btn" data-level="visual" data-score="60" data-color="orange" onclick="selectHelpLevel(this)">
+                <span class="btn-label">시각적 시범</span>
+                <span class="btn-sub">보여줘야 함</span>
+              </button>
+              <button type="button" class="help-level-btn" data-level="verbal" data-score="80" data-color="yellow" onclick="selectHelpLevel(this)">
+                <span class="btn-label">구두 힌트</span>
+                <span class="btn-sub">가끔 설명</span>
+              </button>
+              <button type="button" class="help-level-btn" data-level="independent" data-score="100" data-color="green" onclick="selectHelpLevel(this)">
+                <span class="btn-label">독립적 수행</span>
+                <span class="btn-sub">도움 없음</span>
+              </button>
             </div>
-            <input type="hidden" id="rec-level" value="verbal" />
+            <div class="help-level-bar-wrap">
+              <div class="help-level-bar" id="help-level-bar"></div>
+            </div>
+            <div class="help-level-score" id="help-level-score"></div>
           </div>
-          <div class="field">
-            <label>참여도</label>
-            <div class="radio-group">
-              <label class="radio-label"><input type="radio" name="rec-participation" value="self" /> 자율적 적극참여</label>
-              <label class="radio-label"><input type="radio" name="rec-participation" value="active" /> 적극 참여</label>
-              <label class="radio-label"><input type="radio" name="rec-participation" value="normal" checked /> 보통 참여</label>
-              <label class="radio-label"><input type="radio" name="rec-participation" value="passive" /> 소극 참여</label>
-              <label class="radio-label"><input type="radio" name="rec-participation" value="difficult" /> 참여 어려움</label>
+          <input type="hidden" id="rec-level" value="verbal" />
+          <input type="hidden" id="rec-base-score" value="80" />
+        </div>
+        <div class="field">
+          <label>자기결정성 지표</label>
+          <div class="sdc-section">
+            <div class="sdc-item">
+              <label class="sdc-label">
+                <input type="checkbox" id="sdc-autonomy" onchange="updateScore()" />
+                <span>① 미세자율성: 교재 색상, 도구 종류, 혹은 오늘의 목표치를 어르신이 스스로 결정하셨나요?</span>
+              </label>
+            </div>
+            <div class="sdc-item">
+              <label class="sdc-label">
+                <input type="checkbox" id="sdc-persistence" onchange="updateScore()" />
+                <span>② 지속 의지: 문제가 어려워 고비가 왔음에도 포기하지 않고 끝까지 완수하셨나요?</span>
+              </label>
+            </div>
+            <div class="sdc-item">
+              <label class="sdc-label">
+                <input type="checkbox" id="sdc-relation" onchange="toggleRelationInput(); updateScore()" />
+                <span>③ 관계성: 동료에게 도구를 양보하거나 밝은 미소로 감정적 유대감을 나누셨나요?</span>
+              </label>
+              <input type="text" id="sdc-relation-input" class="sdc-input" style="display:none" placeholder="어르신의 반응을 키워드로 입력하세요 (예: 환하게 웃으심, 먼저 말 걸어주심)" />
             </div>
           </div>
         </div>
@@ -1052,13 +1073,29 @@ function selectHelpLevel(btn) {
   const level = btn.dataset.level;
   btn.classList.add('active-' + color);
   document.getElementById('rec-level').value = level;
-  const bar = document.getElementById('help-level-bar');
-  const scoreEl = document.getElementById('help-level-score');
+  document.getElementById('rec-base-score').value = score;
   const colorMap = { red:'#ef4444', orange:'#f97316', yellow:'#eab308', green:'#22c55e' };
-  bar.style.width = score + '%';
-  bar.style.backgroundColor = colorMap[color];
-  scoreEl.textContent = score + '점';
-  scoreEl.style.color = colorMap[color];
+  document.getElementById('help-level-bar').style.backgroundColor = colorMap[color];
+  document.getElementById('help-level-score').style.color = colorMap[color];
+  updateScore();
+}
+
+function updateScore() {
+  const base = parseInt(document.getElementById('rec-base-score').value) || 80;
+  let bonus = 0;
+  if (document.getElementById('sdc-autonomy').checked)    bonus += 5;
+  if (document.getElementById('sdc-persistence').checked) bonus += 5;
+  if (document.getElementById('sdc-relation').checked)    bonus += 5;
+  const total = Math.min(100, base + bonus);
+  document.getElementById('help-level-bar').style.width = total + '%';
+  document.getElementById('help-level-score').textContent = total + '점';
+}
+
+function toggleRelationInput() {
+  const cb  = document.getElementById('sdc-relation');
+  const inp = document.getElementById('sdc-relation-input');
+  inp.style.display = cb.checked ? 'block' : 'none';
+  if (!cb.checked) inp.value = '';
 }
 
 function initHelpLevel() {
@@ -1071,27 +1108,26 @@ function generateRecord() {
   const domain   = document.getElementById('rec-domain').value;
   const taskType = document.getElementById('rec-tasktype').value.trim()||'인지';
   const topic    = document.getElementById('rec-topic').value.trim();
-  const tags     = document.getElementById('rec-tags').value.trim();
-  const participation = (document.querySelector('input[name="rec-participation"]:checked')||{}).value||'normal';
-  const level         = document.getElementById('rec-level').value || 'verbal';
-  const partTexts = {
-    'self':      '스스로 적극적으로 활동에 참여하며 높은 자기주도성을 보이셨습니다.',
-    'active':    '활동 내내 높은 집중력과 적극적인 참여를 보이셨습니다.',
-    'normal':    '전반적으로 무난하게 활동에 참여하셨습니다.',
-    'passive':   '다소 소극적이셨으나 끝까지 활동에 함께하셨습니다.',
-    'difficult': '활동 참여에 어려움을 보이셔서 충분한 지원이 제공되었습니다.'
-  };
+  const tags  = document.getElementById('rec-tags').value.trim();
+  const level = document.getElementById('rec-level').value || 'verbal';
   const levels = {
     'physical':    '신체적 보조와 함께 단계별로 안내해 드려 활동을 마쳤습니다.',
     'visual':      '시각적인 시범과 설명을 반복하여 과제를 이해하고 수행하셨습니다.',
     'verbal':      '간간이 구두로 설명을 드리자 무난하게 수행하셨습니다.',
     'independent': '별도의 도움 없이 스스로 과제를 완벽히 수행하셨습니다.'
   };
-  let text=_selectedSenior.name+' 어르신은 오늘 ['+domain+'] 영역의 \''+taskType+'\' 활동에 참여하셨습니다. ';
-  if (topic) text+='\''+topic+'\' 주제로 진행된 활동에서 ';
-  text+=(partTexts[participation]||'')+' ';
-  text+=levels[level]||'';
-  if (tags)  text+=' 특히 "'+tags+'" 등의 반응을 보이셨습니다.';
+  let text = _selectedSenior.name+' 어르신은 오늘 ['+domain+'] 영역의 \''+taskType+'\' 활동에 참여하셨습니다. ';
+  if (topic) text += '\''+topic+'\' 주제로 진행된 활동에서 ';
+  text += levels[level] || '';
+  if (document.getElementById('sdc-autonomy').checked)
+    text += ' 활동의 일부를 스스로 결정하시며 자기결정성을 발휘하셨습니다.';
+  if (document.getElementById('sdc-persistence').checked)
+    text += ' 어려운 순간에도 포기하지 않고 도움을 요청하며 끝까지 완수하셨습니다.';
+  if (document.getElementById('sdc-relation').checked) {
+    const kw = document.getElementById('sdc-relation-input').value.trim();
+    text += ' 동료와 따뜻한 유대감을 나누시며 '+(kw||'따뜻한 유대감')+'의 모습을 보여주셨습니다.';
+  }
+  if (tags) text += ' 특히 "'+tags+'" 등의 반응을 보이셨습니다.';
   document.getElementById('rec-result-text').textContent=text;
   document.getElementById('rec-result-box').classList.add('visible');
   document.getElementById('rec-saved').classList.remove('visible');
@@ -1114,7 +1150,10 @@ async function saveRecord() {
       task_type:document.getElementById('rec-tasktype').value.trim(),
       topic:document.getElementById('rec-topic').value.trim(),
       level:document.getElementById('rec-level').value||'verbal',
-      participation:(document.querySelector('input[name="rec-participation"]:checked')||{}).value||'normal',
+      score:Math.min(100,(parseInt(document.getElementById('rec-base-score').value)||80)+
+        (document.getElementById('sdc-autonomy').checked?5:0)+
+        (document.getElementById('sdc-persistence').checked?5:0)+
+        (document.getElementById('sdc-relation').checked?5:0)),
       tags:document.getElementById('rec-tags').value.trim(),
       text, created_at:new Date().toISOString()
     });
