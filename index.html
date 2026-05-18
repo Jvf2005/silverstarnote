@@ -186,7 +186,7 @@
     .result-box { display: none; margin-top: 22px; background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 20px; }
     .result-box.visible { display: block; }
     .result-label { font-size: 13px; font-weight: 600; color: #1e40af; margin-bottom: 10px; }
-    .result-text { font-size: 15px; color: #1f2937; line-height: 1.9; background: #fff; border-radius: 8px; padding: 14px; }
+    .result-text { font-size: 15px; color: #1f2937; line-height: 1.9; background: #fff; border-radius: 8px; padding: 14px; user-select: none; -webkit-user-select: none; -ms-user-select: none; }
 
     /* ── Modal ────────────────────────────────────────────────────────────── */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.48); z-index: 200; justify-content: center; align-items: flex-start; padding: 40px 16px; overflow-y: auto; }
@@ -307,6 +307,17 @@
     /* Firework particles */
     .fw-particle { position:fixed; width:7px; height:7px; border-radius:50%; pointer-events:none; z-index:9998; animation:fwFly 1.1s ease-out forwards; }
     @keyframes fwFly { 0%{opacity:1;transform:translate(0,0) scale(1)} 100%{opacity:0;transform:translate(var(--px),var(--py)) scale(0)} }
+
+    /* Guest screen */
+    .guest-header { background: #1d4ed8; color: #fff; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 50; }
+    .guest-logo { font-size: 18px; font-weight: 700; }
+    .btn-auth-link { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+    .btn-auth-link:hover { background: rgba(255,255,255,0.28); }
+
+    /* Login required modal */
+    .login-req-icon { font-size: 44px; text-align: center; margin-bottom: 12px; }
+    .login-req-msg { font-size: 15px; color: #374151; text-align: center; line-height: 1.7; margin-bottom: 22px; }
+    .login-req-btns { display: flex; flex-direction: column; gap: 10px; }
   </style>
 </head>
 <body>
@@ -323,6 +334,7 @@
     <hr class="divider" />
     <div class="auth-links">센터가 없으신가요? <a onclick="showCenterReg()">센터 새로 등록하기</a></div>
     <div class="auth-links">초대코드를 받으셨나요? <a onclick="showMemberReg()">직원으로 가입하기</a></div>
+    <div class="auth-links" style="margin-top:8px;"><a onclick="showScreen('s-guest')">← 관찰 기록 작성으로 돌아가기</a></div>
   </div>
 </div>
 
@@ -601,6 +613,153 @@
   </div>
 </div>
 
+<!-- ════════════════════════════ GUEST RECORD SCREEN ═════════════════════════ -->
+<div id="s-guest" class="screen">
+  <div class="guest-header">
+    <div class="guest-logo">🌟 실버스타노트</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-auth-link" onclick="showScreen('s-login')">로그인</button>
+      <button class="btn-auth-link" onclick="showCenterReg()">회원가입</button>
+    </div>
+  </div>
+  <div class="dash-body" style="max-width:860px;">
+    <h2 style="font-size:18px;font-weight:700;color:#111;margin-bottom:4px;">관찰 기록 작성</h2>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:20px;">어르신 활동 관찰 기록 문장을 자동 생성합니다</p>
+    <div id="guest-form-body">
+      <div class="field">
+        <label>어르신 이름 <span style="color:#ef4444">*</span></label>
+        <input type="text" id="guest-senior-name" placeholder="어르신 성함을 입력하세요" />
+      </div>
+      <div class="field">
+        <label>인지 영역</label>
+        <div class="domain-grid">
+          <button type="button" class="domain-btn active" data-value="주의집중력 (Attention)" onclick="selectGuestDomain(this)">
+            <span class="domain-icon">🎯</span>
+            <span class="domain-label">주의<br>집중력</span>
+          </button>
+          <button type="button" class="domain-btn" data-value="언어 및 관련 기능 (Language)" onclick="selectGuestDomain(this)">
+            <span class="domain-icon">💬</span>
+            <span class="domain-label">언어 및<br>관련 기능</span>
+          </button>
+          <button type="button" class="domain-btn" data-value="시공간 구성 능력 (Visuospatial)" onclick="selectGuestDomain(this)">
+            <span class="domain-icon">🧩</span>
+            <span class="domain-label">시공간<br>구성 능력</span>
+          </button>
+          <button type="button" class="domain-btn" data-value="기억력 (Memory)" onclick="selectGuestDomain(this)">
+            <span class="domain-icon">🧠</span>
+            <span class="domain-label">기억력</span>
+          </button>
+          <button type="button" class="domain-btn" data-value="전두엽/집행 기능 (Executive Function)" onclick="selectGuestDomain(this)">
+            <span class="domain-icon">⚡</span>
+            <span class="domain-label">전두엽/<br>집행 기능</span>
+          </button>
+        </div>
+        <input type="hidden" id="guest-domain" value="주의집중력 (Attention)" />
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>문제 유형</label>
+          <input type="text" id="guest-tasktype" placeholder="예: 색칠하기, 미로찾기" />
+        </div>
+        <div class="field">
+          <label>활동 주제</label>
+          <input type="text" id="guest-topic" placeholder="예: 고향 풍경, 시장 구경" />
+        </div>
+      </div>
+      <div class="field">
+        <label>도움 수준</label>
+        <div class="help-level-wrapper">
+          <div class="help-level-buttons">
+            <button type="button" class="help-level-btn" data-level="physical" data-score="40" data-color="red" onclick="selectGuestHelpLevel(this)">
+              <span class="btn-label">신체적 보조</span>
+              <span class="btn-sub">직접 도와드림</span>
+            </button>
+            <button type="button" class="help-level-btn" data-level="visual" data-score="60" data-color="orange" onclick="selectGuestHelpLevel(this)">
+              <span class="btn-label">시각적 시범</span>
+              <span class="btn-sub">보여줘야 함</span>
+            </button>
+            <button type="button" class="help-level-btn" data-level="verbal" data-score="80" data-color="yellow" onclick="selectGuestHelpLevel(this)">
+              <span class="btn-label">구두 힌트</span>
+              <span class="btn-sub">가끔 설명</span>
+            </button>
+            <button type="button" class="help-level-btn" data-level="independent" data-score="100" data-color="green" onclick="selectGuestHelpLevel(this)">
+              <span class="btn-label">독립적 수행</span>
+              <span class="btn-sub">도움 없음</span>
+            </button>
+          </div>
+          <div class="help-level-bar-wrap">
+            <div class="help-level-bar" id="guest-help-level-bar"></div>
+          </div>
+          <div class="help-level-score" id="guest-help-level-score"></div>
+        </div>
+        <input type="hidden" id="guest-rec-level" value="verbal" />
+        <input type="hidden" id="guest-rec-base-score" value="80" />
+      </div>
+      <div class="field">
+        <label>자기결정성 지표</label>
+        <div class="sdc-section">
+          <div class="sdc-item">
+            <label class="sdc-label">
+              <input type="checkbox" id="guest-sdc-autonomy" onchange="onGuestSdcChange('autonomy')" />
+              <span>① 미세자율성: 교재 색상, 도구 종류, 혹은 오늘의 목표치를 어르신이 스스로 결정하셨나요?</span>
+            </label>
+          </div>
+          <div class="sdc-item">
+            <label class="sdc-label">
+              <input type="checkbox" id="guest-sdc-persistence" onchange="onGuestSdcChange('persistence')" />
+              <span>② 지속 의지: 문제가 어려워 고비가 왔음에도 포기하지 않고 끝까지 완수하셨나요?</span>
+            </label>
+          </div>
+          <div class="sdc-item">
+            <label class="sdc-label">
+              <input type="checkbox" id="guest-sdc-relation" onchange="onGuestSdcChange('relation')" />
+              <span>③ 관계성: 동료에게 도구를 양보하거나 밝은 미소로 감정적 유대감을 나누셨나요?</span>
+            </label>
+            <input type="text" id="guest-sdc-relation-input" class="sdc-input" style="display:none" placeholder="어르신의 반응을 키워드로 입력하세요 (예: 환하게 웃으심, 먼저 말 걸어주심)" />
+          </div>
+        </div>
+      </div>
+      <div class="star-preview-box" id="guest-star-preview-box">
+        <span class="star-preview-stars" id="guest-star-preview-stars"></span>
+        <span class="star-preview-text" id="guest-star-preview-text"></span>
+      </div>
+      <div class="field">
+        <label>특이사항 및 반응</label>
+        <textarea id="guest-rec-tags" placeholder="예: 옛날 추억을 이야기하며 즐거워하심"></textarea>
+      </div>
+      <button class="btn-primary" onclick="generateGuestRecord()">관찰 기록 문장 생성하기</button>
+      <div class="result-box" id="guest-result-box">
+        <div class="result-label">📝 생성된 관찰 기록</div>
+        <div class="result-text" id="guest-result-text" oncontextmenu="return false"></div>
+        <div class="rec-actions">
+          <button class="btn-text" onclick="copyGuestRecord()">클립보드에 복사하기</button>
+          <button class="btn-sm btn-sm-primary" onclick="showLoginRequired()">기록 저장하기</button>
+        </div>
+        <div class="copy-ok" id="guest-copy-ok">✅ 복사되었습니다!</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ MODAL: 로그인 필요 ═══════════════════════════════ -->
+<div id="modal-login-required" class="modal-overlay">
+  <div class="modal-card" style="max-width:380px;">
+    <div class="modal-header">
+      <div><div class="modal-title">회원 전용 기능</div></div>
+      <button class="modal-close" onclick="closeModal('modal-login-required')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="login-req-icon">🔒</div>
+      <div class="login-req-msg">복사 및 저장 기능은 회원만 사용 가능합니다.<br><strong>가입은 무료입니다!</strong></div>
+      <div class="login-req-btns">
+        <button class="btn-primary" onclick="closeModal('modal-login-required');showCenterReg()">회원가입 하기</button>
+        <button class="btn-secondary" onclick="closeModal('modal-login-required');showScreen('s-login')">로그인 하기</button>
+        <button class="btn-secondary" onclick="closeModal('modal-login-required')">닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════════════════ MODAL: 어르신 등록 ═════════════════════════════ -->
 <div id="modal-sreg" class="modal-overlay">
   <div class="modal-card">
@@ -818,7 +977,7 @@ function doLogout() {
   document.getElementById('login-email').value = '';
   document.getElementById('login-pw').value = '';
   document.getElementById('login-alert').classList.remove('visible');
-  showScreen('s-login');
+  showScreen('s-guest');
 }
 
 async function goToDashboard(user) {
@@ -1614,7 +1773,7 @@ function generateRecord() {
 
 async function saveRecord() {
   if (!_selectedSenior) return;
-  const session=getSession(); if (!session) return;
+  const session=getSession(); if (!session) { showLoginRequired(); return; }
   const text=document.getElementById('rec-result-text').textContent; if (!text) return;
   setBtnLoading('save-rec-btn', true);
   try {
@@ -1648,10 +1807,130 @@ async function saveRecord() {
 }
 
 function copyRecord() {
+  if (!getSession()) { showLoginRequired(); return; }
   navigator.clipboard.writeText(document.getElementById('rec-result-text').textContent).then(()=>{
     const el=document.getElementById('rec-copy-ok'); el.classList.add('visible');
     setTimeout(()=>el.classList.remove('visible'),2000);
   });
+}
+
+// ── GUEST RECORD FORM ─────────────────────────────────────────────────────────
+function selectGuestDomain(btn) {
+  btn.closest('.domain-grid').querySelectorAll('.domain-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('guest-domain').value = btn.dataset.value;
+}
+
+function selectGuestHelpLevel(btn) {
+  btn.closest('.help-level-buttons').querySelectorAll('.help-level-btn').forEach(b => {
+    b.classList.remove('active-red','active-orange','active-yellow','active-green');
+  });
+  const color = btn.dataset.color;
+  btn.classList.add('active-' + color);
+  document.getElementById('guest-rec-level').value = btn.dataset.level;
+  document.getElementById('guest-rec-base-score').value = btn.dataset.score;
+  const colorMap = { red:'#ef4444', orange:'#f97316', yellow:'#eab308', green:'#22c55e' };
+  document.getElementById('guest-help-level-bar').style.backgroundColor = colorMap[color];
+  document.getElementById('guest-help-level-score').style.color = colorMap[color];
+  updateGuestScore();
+}
+
+function updateGuestScore() {
+  const base = parseInt(document.getElementById('guest-rec-base-score').value) || 80;
+  let bonus = 0;
+  if (document.getElementById('guest-sdc-autonomy').checked)    bonus += 5;
+  if (document.getElementById('guest-sdc-persistence').checked) bonus += 5;
+  if (document.getElementById('guest-sdc-relation').checked)    bonus += 5;
+  const total = Math.min(100, base + bonus);
+  document.getElementById('guest-help-level-bar').style.width = total + '%';
+  document.getElementById('guest-help-level-score').textContent = total + '점';
+}
+
+function calcGuestSessionStars() {
+  let s = 1;
+  if (document.getElementById('guest-sdc-autonomy')?.checked)    s += 1;
+  if (document.getElementById('guest-sdc-persistence')?.checked) s += 2;
+  if (document.getElementById('guest-sdc-relation')?.checked)    s += 1;
+  return s;
+}
+
+function toggleGuestRelationInput() {
+  const cb  = document.getElementById('guest-sdc-relation');
+  const inp = document.getElementById('guest-sdc-relation-input');
+  inp.style.display = cb.checked ? 'block' : 'none';
+  if (!cb.checked) inp.value = '';
+}
+
+function onGuestSdcChange(type) {
+  if (type === 'relation') toggleGuestRelationInput();
+  updateGuestScore();
+  const cb = document.getElementById('guest-sdc-' + type);
+  if (cb.checked) {
+    const msgs   = { autonomy:'스스로 결정하셨어요! ★', persistence:'포기하지 않으셨어요! ★★', relation:'따뜻한 마음을 나누셨어요! ★' };
+    const counts = { autonomy:1, persistence:2, relation:1 };
+    showPraiseToast(msgs[type], cb);
+    flyStarAnimation(cb, counts[type]);
+  }
+  updateGuestStarPreview();
+}
+
+function updateGuestStarPreview() {
+  const stars = calcGuestSessionStars();
+  const box = document.getElementById('guest-star-preview-box');
+  const starsEl = document.getElementById('guest-star-preview-stars');
+  const textEl  = document.getElementById('guest-star-preview-text');
+  if (!box) return;
+  box.classList.add('visible');
+  starsEl.textContent = '★'.repeat(stars);
+  textEl.textContent  = '저장 시 ' + stars + '개의 별을 획득해요!';
+}
+
+function generateGuestRecord() {
+  const name = document.getElementById('guest-senior-name').value.trim();
+  if (!name) { alert('어르신 이름을 입력해주세요.'); return; }
+  const domain   = document.getElementById('guest-domain').value;
+  const taskType = document.getElementById('guest-tasktype').value.trim() || '인지';
+  const topic    = document.getElementById('guest-topic').value.trim();
+  const tags     = document.getElementById('guest-rec-tags').value.trim();
+  const level    = document.getElementById('guest-rec-level').value || 'verbal';
+  const levels = {
+    'physical':    '신체적 보조와 함께 단계별로 안내해 드려 활동을 마쳤습니다.',
+    'visual':      '시각적인 시범과 설명을 반복하여 과제를 이해하고 수행하셨습니다.',
+    'verbal':      '간간이 구두로 설명을 드리자 무난하게 수행하셨습니다.',
+    'independent': '별도의 도움 없이 스스로 과제를 완벽히 수행하셨습니다.'
+  };
+  let text = name + ' 어르신은 오늘 [' + domain + '] 영역의 \'' + taskType + '\' 활동에 참여하셨습니다. ';
+  if (topic) text += '\'' + topic + '\' 주제로 진행된 활동에서 ';
+  text += levels[level] || '';
+  if (document.getElementById('guest-sdc-autonomy').checked)
+    text += ' 활동의 일부를 스스로 결정하시며 자기결정성을 발휘하셨습니다.';
+  if (document.getElementById('guest-sdc-persistence').checked)
+    text += ' 어려운 순간에도 포기하지 않고 도움을 요청하며 끝까지 완수하셨습니다.';
+  if (document.getElementById('guest-sdc-relation').checked) {
+    const kw = document.getElementById('guest-sdc-relation-input').value.trim();
+    text += ' 동료와 따뜻한 유대감을 나누시며 ' + (kw || '따뜻한 유대감') + '의 모습을 보여주셨습니다.';
+  }
+  if (tags) text += ' 특히 "' + tags + '" 등의 반응을 보이셨습니다.';
+  document.getElementById('guest-result-text').textContent = text;
+  document.getElementById('guest-result-box').classList.add('visible');
+  document.getElementById('guest-copy-ok').classList.remove('visible');
+}
+
+function copyGuestRecord() {
+  if (!getSession()) { showLoginRequired(); return; }
+  navigator.clipboard.writeText(document.getElementById('guest-result-text').textContent).then(() => {
+    const el = document.getElementById('guest-copy-ok'); el.classList.add('visible');
+    setTimeout(() => el.classList.remove('visible'), 2000);
+  });
+}
+
+function showLoginRequired() {
+  openModal('modal-login-required');
+}
+
+function initGuestHelpLevel() {
+  const defaultBtn = document.querySelector('#s-guest .help-level-btn[data-level="verbal"]');
+  if (defaultBtn) selectGuestHelpLevel(defaultBtn);
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
@@ -1660,6 +1939,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (e.key==='Enter') doLogin();
   });
   initHelpLevel();
+  initGuestHelpLevel();
 });
 
 (async function init() {
@@ -1670,7 +1950,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (user&&user.is_active) { await goToDashboard(user); return; }
     } catch(e) { console.error('init error:', e); }
   }
-  showScreen('s-login');
+  showScreen('s-guest');
 })();
 </script>
 </body>
