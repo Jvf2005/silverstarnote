@@ -378,20 +378,25 @@
     .diff-select { padding:5px 8px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; font-family:inherit; }
     .print-summary { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 14px; font-size:13px; color:#166534; margin-bottom:16px; white-space:pre-line; line-height:1.9; }
 
-    /* ── Lesson print area ───────────────────────────────────────────────── */
-    #lesson-print-area { display:none; }
-    @media print {
-      body > *:not(#lesson-print-area) { display:none !important; }
-      #lesson-print-area { display:block !important; position:static; width:100%; }
+    /* ── Print overlay ───────────────────────────────────────────────────── */
+    #cal-print-overlay {
+      display:none; position:fixed; inset:0; z-index:9999;
+      background:#fff; flex-direction:column;
     }
-    .lp-inner { font-family:'Malgun Gothic','Noto Sans KR',sans-serif; padding:40px; max-width:680px; margin:0 auto; }
-    .lp-watermark { text-align:center; font-size:12px; color:#9ca3af; letter-spacing:1px; padding-bottom:10px; border-bottom:1px solid #e5e7eb; margin-bottom:24px; }
-    .lp-section-h { font-size:16px; font-weight:700; color:#111; padding-bottom:6px; border-bottom:2px solid #e5e7eb; margin:20px 0 12px; }
-    .lp-info-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 24px; margin-bottom:8px; }
-    .lp-info-item { display:flex; gap:8px; font-size:14px; color:#374151; }
-    .lp-info-key  { font-weight:600; min-width:72px; flex-shrink:0; }
-    .lp-copies-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
-    .lp-copies-badge { background:#f3f4f6; border-radius:8px; padding:7px 16px; font-weight:600; font-size:14px; }
+    #cal-print-overlay.active { display:flex; }
+    .cpo-wm {
+      flex-shrink:0; height:36px; background:#fff;
+      border-bottom:1px solid #e5e7eb;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 20px; font-size:12px; color:#6b7280;
+      font-family:'Malgun Gothic','Noto Sans KR',sans-serif;
+    }
+    .cpo-wm strong { color:#374151; font-size:13px; }
+    #cal-print-overlay iframe { flex:1; border:none; width:100%; }
+    @media print {
+      body > *:not(#cal-print-overlay) { display:none !important; }
+      #cal-print-overlay { display:flex !important; position:fixed; inset:0; }
+    }
     .lp-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
     .lp-table th { background:#f9fafb; padding:8px 10px; text-align:left; font-weight:600; color:#6b7280; border-bottom:1px solid #e5e7eb; }
     .lp-table td { padding:8px 10px; border-bottom:1px solid #f3f4f6; color:#374151; }
@@ -2621,37 +2626,40 @@ function printLesson() {
   const pdfUrl = mat && mat.pdf_url ? mat.pdf_url : null;
 
   if (pdfUrl) {
-    // ── PDF 교재 인쇄: 새 창에 워터마크 + iframe 임베드 후 자동 인쇄 ──────────
-    const w = window.open('', '_blank');
-    if (!w) { alert('팝업이 차단되었습니다. 브라우저 팝업을 허용해주세요.'); return; }
-    const escAttr = function(s) { return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
-    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
-      + '<title>수업 교재 — ' + escAttr(dateLabel) + '</title>'
-      + '<style>'
-      + '*{box-sizing:border-box;margin:0;padding:0}'
-      + 'body{font-family:"Malgun Gothic","Noto Sans KR",sans-serif;}'
-      + '.wm-bar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,.93);'
-      + '  border-bottom:1px solid #e5e7eb;padding:5px 16px;font-size:11px;color:#6b7280;'
-      + '  display:flex;justify-content:space-between;align-items:center;}'
-      + '.wm-bar strong{font-size:12px;color:#374151;}'
-      + 'iframe{position:fixed;top:30px;left:0;width:100%;height:calc(100vh - 30px);border:none;}'
-      + '@media print{'
-      + '  .wm-bar{position:fixed;top:0;left:0;right:0;}'
-      + '  iframe{top:30px;height:calc(100vh - 30px);}'
-      + '}'
-      + '</style></head><body>'
-      + '<div class="wm-bar">'
-      + '<strong>' + escAttr(_calCenterName) + '</strong>&nbsp;|&nbsp;' + escAttr(dateLabel)
-      + '<span style="color:#374151;">' + escAttr(domain) + (ssn ? '&nbsp;·&nbsp;SSN: ' + escAttr(ssn) : '') + '</span>'
+    // ── PDF 인쇄: 현재 창 전체를 인쇄 전용 오버레이로 전환 ───────────────────────
+    const esc = function(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+
+    let overlay = document.getElementById('cal-print-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'cal-print-overlay';
+      document.body.appendChild(overlay);
+    }
+
+    overlay.innerHTML =
+      '<div class="cpo-wm">'
+      + '<strong>' + esc(_calCenterName) + '</strong>&nbsp;|&nbsp;' + esc(dateLabel)
+      + '<span>' + esc(domain) + (ssn ? '&nbsp;·&nbsp;SSN:&nbsp;' + esc(ssn) : '') + '</span>'
       + '</div>'
-      + '<iframe src="' + escAttr(pdfUrl) + '" id="pf"></iframe>'
-      + '<script>'
-      + 'var t=0;'
-      + 'document.getElementById("pf").onload=function(){clearTimeout(t);setTimeout(function(){window.print();},600);};'
-      + 't=setTimeout(function(){window.print();},4000);'
-      + '<\/script>'
-      + '</body></html>');
-    w.document.close();
+      + '<iframe id="cpo-iframe" src="' + esc(pdfUrl) + '"></iframe>';
+
+    overlay.classList.add('active');
+
+    const iframe = document.getElementById('cpo-iframe');
+    let printed = false;
+    function doPrint() {
+      if (printed) return;
+      printed = true;
+      setTimeout(function() { window.print(); }, 400);
+    }
+    const fallback = setTimeout(doPrint, 5000);
+    iframe.onload = function() { clearTimeout(fallback); doPrint(); };
+
+    function onAfterPrint() {
+      overlay.classList.remove('active');
+      window.removeEventListener('afterprint', onAfterPrint);
+    }
+    window.addEventListener('afterprint', onAfterPrint);
 
   } else {
     // ── PDF 없음(준비 중): 안내 메시지 표시 ─────────────────────────────────────
