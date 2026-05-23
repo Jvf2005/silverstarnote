@@ -2626,40 +2626,8 @@ function printLesson() {
   const pdfUrl = mat && mat.pdf_url ? mat.pdf_url : null;
 
   if (pdfUrl) {
-    // ── PDF 인쇄: 현재 창 전체를 인쇄 전용 오버레이로 전환 ───────────────────────
-    const esc = function(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
-
-    let overlay = document.getElementById('cal-print-overlay');
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.id = 'cal-print-overlay';
-      document.body.appendChild(overlay);
-    }
-
-    overlay.innerHTML =
-      '<div class="cpo-wm">'
-      + '<strong>' + esc(_calCenterName) + '</strong>&nbsp;|&nbsp;' + esc(dateLabel)
-      + '<span>' + esc(domain) + (ssn ? '&nbsp;·&nbsp;SSN:&nbsp;' + esc(ssn) : '') + '</span>'
-      + '</div>'
-      + '<iframe id="cpo-iframe" src="' + esc(pdfUrl) + '"></iframe>';
-
-    overlay.classList.add('active');
-
-    const iframe = document.getElementById('cpo-iframe');
-    let printed = false;
-    function doPrint() {
-      if (printed) return;
-      printed = true;
-      setTimeout(function() { window.print(); }, 400);
-    }
-    const fallback = setTimeout(doPrint, 5000);
-    iframe.onload = function() { clearTimeout(fallback); doPrint(); };
-
-    function onAfterPrint() {
-      overlay.classList.remove('active');
-      window.removeEventListener('afterprint', onAfterPrint);
-    }
-    window.addEventListener('afterprint', onAfterPrint);
+    alert('PDF가 새 탭에서 열립니다.\nCtrl+P를 눌러 인쇄하세요.\n교사 가이드는 별도로 인쇄됩니다.');
+    window.open(pdfUrl, '_blank');
 
   } else {
     // ── PDF 없음(준비 중): 안내 메시지 표시 ─────────────────────────────────────
