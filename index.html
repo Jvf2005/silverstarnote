@@ -2623,11 +2623,24 @@ function printLesson() {
 
   closeModal('modal-lesson-start');
 
-  const pdfUrl = mat && mat.pdf_url ? mat.pdf_url : null;
+  const pdfUrl   = mat && mat.pdf_url   ? mat.pdf_url   : null;
+  const guideUrl = mat && mat.guide_url ? mat.guide_url : null;
 
   if (pdfUrl) {
-    alert('PDF가 새 탭에서 열립니다.\nCtrl+P를 눌러 인쇄하세요.\n교사 가이드는 별도로 인쇄됩니다.');
-    window.open(pdfUrl, '_blank');
+    alert('교재 PDF와 교사 가이드가 새 탭으로 열립니다.\n각 탭에서 Ctrl+P로 인쇄하세요.\n팝업이 차단된 경우 브라우저 주소창 오른쪽의\n팝업 허용 버튼을 클릭하세요.');
+
+    // 사용된 난이도별로 각각 새 탭 열기 (SSN-A{난이도}##-## 패턴에서 난이도 글자 교체)
+    const usedDiffs = ['A', 'B', 'C'].filter(d => counts[d] > 0);
+    if (usedDiffs.length === 0) {
+      window.open(pdfUrl, '_blank');
+    } else {
+      usedDiffs.forEach(function(diff) {
+        const diffUrl = pdfUrl.replace(/(SSN-[A-Z])([ABC])/, '$1' + diff);
+        window.open(diffUrl, '_blank');
+      });
+    }
+
+    if (guideUrl) window.open(guideUrl, '_blank');
 
   } else {
     // ── PDF 없음(준비 중): 안내 메시지 표시 ─────────────────────────────────────
