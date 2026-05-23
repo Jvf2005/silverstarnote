@@ -377,6 +377,24 @@
     .senior-diff-table td { padding:8px 10px; border-bottom:1px solid #f3f4f6; }
     .diff-select { padding:5px 8px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; font-family:inherit; }
     .print-summary { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 14px; font-size:13px; color:#166534; margin-bottom:16px; white-space:pre-line; line-height:1.9; }
+
+    /* ── Lesson print area ───────────────────────────────────────────────── */
+    #lesson-print-area { display:none; }
+    @media print {
+      body > *:not(#lesson-print-area) { display:none !important; }
+      #lesson-print-area { display:block !important; position:static; width:100%; }
+    }
+    .lp-inner { font-family:'Malgun Gothic','Noto Sans KR',sans-serif; padding:40px; max-width:680px; margin:0 auto; }
+    .lp-watermark { text-align:center; font-size:12px; color:#9ca3af; letter-spacing:1px; padding-bottom:10px; border-bottom:1px solid #e5e7eb; margin-bottom:24px; }
+    .lp-section-h { font-size:16px; font-weight:700; color:#111; padding-bottom:6px; border-bottom:2px solid #e5e7eb; margin:20px 0 12px; }
+    .lp-info-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 24px; margin-bottom:8px; }
+    .lp-info-item { display:flex; gap:8px; font-size:14px; color:#374151; }
+    .lp-info-key  { font-weight:600; min-width:72px; flex-shrink:0; }
+    .lp-copies-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
+    .lp-copies-badge { background:#f3f4f6; border-radius:8px; padding:7px 16px; font-weight:600; font-size:14px; }
+    .lp-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+    .lp-table th { background:#f9fafb; padding:8px 10px; text-align:left; font-weight:600; color:#6b7280; border-bottom:1px solid #e5e7eb; }
+    .lp-table td { padding:8px 10px; border-bottom:1px solid #f3f4f6; color:#374151; }
   </style>
 </head>
 <body>
@@ -2331,11 +2349,27 @@ function clickCalDate(dateStr) {
   if (d === 1 && !plan) {
     document.getElementById('mp-domain-badge').textContent = '지남력';
     document.getElementById('mp-domain-badge').style.cssText = 'background:#ede9fe;color:#6d28d9;';
-    document.getElementById('mp-type-topic').textContent = '날짜·계절 오리엔테이션';
-    document.getElementById('mp-ssn').textContent = '';
-    document.getElementById('mp-why').textContent = '매월 첫 수업은 현재 날짜, 요일, 계절 등을 인식하는 지남력 훈련으로 시작합니다. 교재를 지정하려면 "다른 교재로 변경"을 누르세요.';
-    document.getElementById('mp-not-ready').style.display = 'none';
     document.getElementById('mp-completed-check').style.display = 'none';
+
+    // Supabase materials 테이블에서 domain='지남력' 교재 연결
+    const orientMat = _calMats.find(m => m.domain === '지남력') || null;
+    if (orientMat) {
+      document.getElementById('mp-type-topic').textContent =
+        (orientMat.type || '') + (orientMat.topic ? ' · ' + orientMat.topic : '');
+      document.getElementById('mp-ssn').textContent = orientMat.ssn ? 'SSN: ' + orientMat.ssn : '';
+      if (orientMat.is_ready === false) {
+        document.getElementById('mp-why').textContent = '';
+        document.getElementById('mp-not-ready').style.display = 'block';
+      } else {
+        document.getElementById('mp-why').textContent = orientMat.description || '';
+        document.getElementById('mp-not-ready').style.display = 'none';
+      }
+    } else {
+      document.getElementById('mp-type-topic').textContent = '날짜·계절 오리엔테이션';
+      document.getElementById('mp-ssn').textContent = '';
+      document.getElementById('mp-why').textContent = '매월 첫 수업은 날짜, 요일, 계절 등을 인식하는 지남력 훈련으로 시작합니다. 교재를 지정하려면 "다른 교재로 변경"을 누르세요.';
+      document.getElementById('mp-not-ready').style.display = 'none';
+    }
   } else if (plan) {
     const mat = plan.ssn ? _calMats.find(m => m.ssn === plan.ssn) : null;
     document.getElementById('mp-domain-badge').textContent = plan.domain || '미지정';
@@ -2559,62 +2593,36 @@ function printLesson() {
   const seniorRows = _calSeniors.map(s => {
     const diff = diffs[s.senior_id] || '-';
     const g    = gradeLabel(grades[s.senior_id] || '');
-    return '<tr><td>' + s.name + ' 어르신</td><td>' + g + '</td><td><strong style="font-size:15px;">' + diff + '</strong></td></tr>';
+    return '<tr class="lp-table-tr"><td>' + s.name + ' 어르신</td><td>' + g + '</td><td><strong style="font-size:15px;">' + diff + '</strong></td></tr>';
   }).join('');
 
-  const w = window.open('', '_blank');
-  w.document.write(`<!DOCTYPE html><html><head>
-<meta charset="UTF-8"><title>수업 시작 — ${dateLabel}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Malgun Gothic','Noto Sans KR',sans-serif;background:#f3f4f6;}
-.watermark{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);
-  font-size:52px;font-weight:900;color:rgba(0,0,0,.05);pointer-events:none;z-index:0;white-space:nowrap;}
-.page{position:relative;z-index:1;max-width:680px;margin:32px auto;background:#fff;
-  padding:36px 44px;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.12);}
-.hdr{border-bottom:3px solid #1d4ed8;padding-bottom:12px;margin-bottom:20px;}
-.hdr-title{font-size:20px;font-weight:700;color:#1d4ed8;}
-.hdr-sub{font-size:13px;color:#6b7280;margin-top:3px;}
-.info{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#eff6ff;border-radius:8px;padding:14px;margin-bottom:18px;}
-.info-item label{font-size:11px;font-weight:700;color:#6b7280;display:block;margin-bottom:2px;}
-.info-item span{font-size:14px;font-weight:600;color:#1e40af;}
-.print-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;margin-bottom:18px;}
-.print-box h3{font-size:13px;font-weight:700;color:#166534;margin-bottom:8px;}
-.print-box p{font-size:13px;color:#166534;margin:3px 0;line-height:1.8;}
-h2{font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;}
-table{width:100%;border-collapse:collapse;font-size:13px;}
-th{background:#f9fafb;padding:8px 10px;text-align:left;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;}
-td{padding:8px 10px;border-bottom:1px solid #f3f4f6;color:#374151;}
-a{color:#2563eb;}
-@media print{body{background:#fff}.page{box-shadow:none;margin:0;border-radius:0;max-width:none;}}
-</style></head><body>
-<div class="watermark">${watermark}</div>
-<div class="page">
-  <div class="hdr">
-    <div class="hdr-title">📋 수업 시작 정보</div>
-    <div class="hdr-sub">${_calCenterName} &nbsp;·&nbsp; ${dateLabel}</div>
-  </div>
-  <div class="info">
-    <div class="info-item"><label>인지 영역</label><span>${domain}</span></div>
-    <div class="info-item"><label>문제 유형</label><span>${type}</span></div>
-    <div class="info-item"><label>활동 주제</label><span>${topic}</span></div>
-    <div class="info-item"><label>교재 SSN</label><span style="font-family:monospace;font-size:12px;">${ssn}</span></div>
-  </div>
-  <div class="print-box">
-    <h3>🖨️ 인쇄 목록</h3>
-    ${printLines.map(l => '<p>· ' + l + '</p>').join('')}
-  </div>
-  <h2>👴 어르신별 난이도</h2>
-  <table>
-    <thead><tr><th>어르신</th><th>요양등급</th><th>난이도</th></tr></thead>
-    <tbody>${seniorRows}</tbody>
-  </table>
-</div>
-<script>setTimeout(()=>window.print(),500);<\/script>
-</body></html>`);
-  w.document.close();
+  const copiesBadges = [];
+  if (counts.A) copiesBadges.push('<span class="lp-copies-badge">A형 ' + counts.A + '부</span>');
+  if (counts.B) copiesBadges.push('<span class="lp-copies-badge">B형 ' + counts.B + '부</span>');
+  if (counts.C) copiesBadges.push('<span class="lp-copies-badge">C형 ' + counts.C + '부</span>');
+  copiesBadges.push('<span class="lp-copies-badge">교사가이드 1부</span>');
+
+  document.getElementById('lesson-print-inner').innerHTML =
+    '<div class="lp-watermark">' + _calCenterName + '&nbsp;&nbsp;|&nbsp;&nbsp;' + dateLabel + '</div>'
+    + '<div class="lp-section-h">📋 수업 정보</div>'
+    + '<div class="lp-info-grid">'
+    + '<div class="lp-info-item"><span class="lp-info-key">인지영역</span><span>' + domain + '</span></div>'
+    + '<div class="lp-info-item"><span class="lp-info-key">문제유형</span><span>' + type + '</span></div>'
+    + '<div class="lp-info-item"><span class="lp-info-key">활동주제</span><span>' + topic + '</span></div>'
+    + '<div class="lp-info-item"><span class="lp-info-key">SSN</span><span style="font-family:monospace;font-size:12px;">' + ssn + '</span></div>'
+    + '</div>'
+    + '<div class="lp-section-h">🖨️ 인쇄 부수</div>'
+    + '<div class="lp-copies-row">' + copiesBadges.join('') + '</div>'
+    + (seniorRows
+        ? '<div class="lp-section-h">👴 어르신별 난이도</div>'
+          + '<table class="lp-table"><thead><tr><th>어르신</th><th>요양등급</th><th>난이도</th></tr></thead>'
+          + '<tbody>' + seniorRows + '</tbody></table>'
+        : '');
 
   closeModal('modal-lesson-start');
+
+  // 바로 브라우저 인쇄 창 호출
+  setTimeout(function() { window.print(); }, 80);
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
@@ -2637,5 +2645,10 @@ document.addEventListener('DOMContentLoaded', function() {
   showScreen('s-guest');
 })();
 </script>
+
+<!-- ════════════════════════ LESSON PRINT AREA ═══════════════════════════════ -->
+<div id="lesson-print-area">
+  <div class="lp-inner" id="lesson-print-inner"></div>
+</div>
 </body>
 </html>
