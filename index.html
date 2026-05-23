@@ -2651,7 +2651,7 @@ async function printLesson() {
   try {
     const resp = await fetch('https://xgcslggptovavafnmhan.supabase.co/functions/v1/pdf-merge', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer sb_publishable_lSuNZkwgTyI-IKEvoLaoQQ_caQDr2FN'},
       body: JSON.stringify({files})
     });
     if (!resp.ok) throw new Error('서버 오류: ' + resp.status);
