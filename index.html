@@ -318,6 +318,65 @@
     .login-req-icon { font-size: 44px; text-align: center; margin-bottom: 12px; }
     .login-req-msg { font-size: 15px; color: #374151; text-align: center; line-height: 1.7; margin-bottom: 22px; }
     .login-req-btns { display: flex; flex-direction: column; gap: 10px; }
+
+    /* ── Calendar ──────────────────────────────────────────────────────────── */
+    .cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .cal-month-label { font-size:18px; font-weight:700; color:#111; }
+    .cal-nav-btn { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:6px 14px; font-size:14px; cursor:pointer; font-family:inherit; transition:background .15s; }
+    .cal-nav-btn:hover { background:#f3f4f6; }
+    .cal-day-header { padding:8px 4px; text-align:center; font-size:12px; font-weight:700; color:#6b7280; border-right:1px solid #e5e7eb; background:#f9fafb; }
+    .cal-day-header:last-child { border-right:none; }
+    .cal-cell { padding:5px 4px; min-height:76px; border-right:1px solid #f3f4f6; border-bottom:1px solid #f3f4f6; cursor:pointer; transition:background .12s; position:relative; background:#fff; overflow:hidden; }
+    .cal-cell:nth-child(6n) { border-right:none; }
+    .cal-cell:hover { background:#f0f7ff; }
+    .cal-cell.empty { cursor:default; background:#fafafa; }
+    .cal-cell.today { box-shadow:inset 0 0 0 2px #2563eb; }
+    .cal-date { font-size:12px; font-weight:600; color:#374151; margin-bottom:3px; }
+    .cal-cell.today .cal-date { color:#2563eb; font-weight:700; }
+    .cal-lesson-chip { font-size:10px; font-weight:600; padding:2px 5px; border-radius:8px; margin-bottom:2px; line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+    .cal-lesson-done   { background:#d1fae5; color:#065f46; }
+    .cal-lesson-plan   { background:#fed7aa; color:#c2410c; }
+    .cal-lesson-orient { background:#ede9fe; color:#6d28d9; }
+    .cal-icons { font-size:10px; position:absolute; bottom:3px; right:3px; line-height:1; }
+
+    /* ── Domain bar chart ──────────────────────────────────────────────────── */
+    .domain-chart { margin-top:18px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:16px 20px; }
+    .domain-chart-title { font-size:13px; font-weight:700; color:#111; margin-bottom:14px; }
+    .domain-bar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .domain-bar-row:last-child { margin-bottom:0; }
+    .domain-bar-label { font-size:12px; font-weight:600; color:#374151; width:62px; flex-shrink:0; text-align:right; }
+    .domain-bar-label.domain-weak { color:#ef4444; }
+    .domain-bar-track { flex:1; position:relative; background:#e5e7eb; border-radius:9999px; height:16px; overflow:hidden; }
+    .domain-bar-goal  { position:absolute; top:0; left:0; height:100%; background:#fef08a; border-radius:9999px; }
+    .domain-bar-done  { position:absolute; top:0; left:0; height:100%; background:#16a34a; border-radius:9999px; transition:width .4s ease; }
+    .domain-bar-count { font-size:11px; color:#6b7280; width:36px; flex-shrink:0; text-align:right; }
+
+    /* ── Material search ──────────────────────────────────────────────────── */
+    .mat-search-row { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+    .mat-search-select { flex:1; min-width:100px; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:13px; font-family:inherit; outline:none; }
+    .mat-search-input  { flex:2; min-width:120px; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:13px; font-family:inherit; outline:none; }
+    .mat-search-select:focus, .mat-search-input:focus { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.1); }
+    .mat-result-list { max-height:320px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:8px; }
+    .mat-result-item { padding:10px 14px; border-bottom:1px solid #f3f4f6; cursor:pointer; transition:background .12s; }
+    .mat-result-item:last-child { border-bottom:none; }
+    .mat-result-item:hover { background:#f0f7ff; }
+    .mat-result-domain { font-size:11px; font-weight:600; background:#dbeafe; color:#1e40af; padding:1px 7px; border-radius:10px; margin-bottom:4px; display:inline-block; }
+    .mat-result-title  { font-size:13px; font-weight:600; color:#111; margin-bottom:2px; }
+    .mat-result-sub    { font-size:11px; color:#9ca3af; }
+    .mat-not-ready     { opacity:.65; }
+
+    /* ── Material preview ─────────────────────────────────────────────────── */
+    .mat-preview-domain { font-size:12px; font-weight:700; padding:3px 10px; border-radius:10px; display:inline-block; margin-bottom:8px; }
+    .mat-preview-why   { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 14px; font-size:13px; color:#166534; line-height:1.7; margin:10px 0 14px; min-height:40px; }
+    .mat-preview-not-ready { background:#fef3c7; border:1px solid #fcd34d; border-radius:8px; padding:10px 14px; font-size:13px; color:#92400e; margin-bottom:12px; }
+
+    /* ── Lesson start ─────────────────────────────────────────────────────── */
+    .lesson-start-info { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:13px; line-height:2; color:#1e40af; }
+    .senior-diff-table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:14px; }
+    .senior-diff-table th { background:#f9fafb; padding:8px 10px; text-align:left; font-weight:600; color:#6b7280; border-bottom:1px solid #e5e7eb; }
+    .senior-diff-table td { padding:8px 10px; border-bottom:1px solid #f3f4f6; }
+    .diff-select { padding:5px 8px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; font-family:inherit; }
+    .print-summary { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 14px; font-size:13px; color:#166534; margin-bottom:16px; white-space:pre-line; line-height:1.9; }
   </style>
 </head>
 <body>
@@ -409,7 +468,8 @@
     <div class="tabs">
       <div class="tab active" id="atab-info"    onclick="switchAdminTab('info')">📋 센터 정보</div>
       <div class="tab"        id="atab-seniors" onclick="switchAdminTab('seniors')">👴 어르신 목록</div>
-      <div class="tab"        id="atab-members" onclick="switchAdminTab('members')">👥 직원 관리</div>
+      <div class="tab"        id="atab-members"   onclick="switchAdminTab('members')">👥 직원 관리</div>
+      <div class="tab"        id="atab-calendar"  onclick="switchAdminTab('calendar')">📅 수업 달력</div>
     </div>
     <div class="tab-pane active" id="apane-info">
       <div class="section-title">센터 정보</div>
@@ -454,6 +514,7 @@
       </div>
       <p style="font-size:12px;color:#9ca3af;margin-top:12px;">* 비활성화된 직원의 기록은 센터에 귀속되어 유지됩니다.</p>
     </div>
+    <div class="tab-pane" id="apane-calendar"></div>
   </div>
 </div>
 
@@ -470,7 +531,8 @@
   <div class="dash-body" style="max-width:860px;">
     <div class="tabs">
       <div class="tab active" id="mtab-seniors" onclick="switchMemberTab('seniors')">👴 어르신 목록</div>
-      <div class="tab"        id="mtab-record"  onclick="switchMemberTab('record')">📝 관찰 기록 작성</div>
+      <div class="tab"        id="mtab-record"    onclick="switchMemberTab('record')">📝 관찰 기록 작성</div>
+      <div class="tab"        id="mtab-calendar"  onclick="switchMemberTab('calendar')">📅 수업 달력</div>
     </div>
     <div class="tab-pane active" id="mpane-seniors">
       <div class="senior-toolbar">
@@ -610,6 +672,7 @@
         </div>
       </div>
     </div>
+    <div class="tab-pane" id="mpane-calendar"></div>
   </div>
 </div>
 
@@ -777,6 +840,18 @@
           <select id="sreg-gender"><option value="">선택</option><option value="m">남성</option><option value="f">여성</option></select>
         </div>
       </div>
+      <div class="field"><label>요양등급</label>
+        <select id="sreg-grade">
+          <option value="">선택 (선택사항)</option>
+          <option value="1">1등급</option>
+          <option value="2">2등급</option>
+          <option value="3">3등급</option>
+          <option value="4">4등급</option>
+          <option value="5">5등급</option>
+          <option value="인지지원">인지지원등급</option>
+        </select>
+        <div class="field-hint">난이도 권장: 1~2등급→A, 3~4등급→B, 5등급/인지지원→C</div>
+      </div>
       <div class="field"><label>특이사항</label><textarea id="sreg-notes" style="height:70px;" placeholder="예: 고혈압 있음, 왼손잡이"></textarea></div>
       <button class="btn-primary" id="sreg-btn" onclick="submitSeniorReg()">등록하기</button>
     </div>
@@ -796,6 +871,7 @@
     <div class="modal-body">
       <div class="senior-detail-info">
         <div class="senior-detail-row"><span class="senior-detail-key">생년월일</span><span class="senior-detail-val" id="sd-birth"></span></div>
+        <div class="senior-detail-row"><span class="senior-detail-key">요양등급</span><span class="senior-detail-val" id="sd-grade"></span></div>
         <div class="senior-detail-row"><span class="senior-detail-key">특이사항</span><span class="senior-detail-val" id="sd-notes"></span></div>
       </div>
       <div class="sd-tabs">
@@ -849,6 +925,117 @@
     <div class="ach-title" id="ach-title"></div>
     <div class="ach-msg" id="ach-msg"></div>
     <div class="ach-btns" id="ach-btns"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════ SHARED CALENDAR ═════════════════════════════════ -->
+<div id="cal-shared" style="display:none;">
+  <div class="cal-header">
+    <button class="cal-nav-btn" onclick="calNav(-1)">‹ 이전달</button>
+    <span class="cal-month-label" id="cal-month-label"></span>
+    <button class="cal-nav-btn" onclick="calNav(1)">다음달 ›</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);border:1px solid #e5e7eb;border-radius:10px 10px 0 0;overflow:hidden;border-bottom:none;">
+    <div class="cal-day-header">월</div>
+    <div class="cal-day-header">화</div>
+    <div class="cal-day-header">수</div>
+    <div class="cal-day-header">목</div>
+    <div class="cal-day-header">금</div>
+    <div class="cal-day-header">토</div>
+  </div>
+  <div id="cal-cells" style="display:grid;grid-template-columns:repeat(6,1fr);border:1px solid #e5e7eb;border-radius:0 0 10px 10px;overflow:hidden;"></div>
+  <div id="cal-domain-chart" class="domain-chart"></div>
+  <div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <button class="btn-sm btn-sm-ghost" onclick="openMatSearchFromCal()">🔍 교재 검색·배정</button>
+    <span style="font-size:12px;color:#9ca3af;">날짜 클릭 → 교재 확인 / 수업 시작</span>
+  </div>
+</div>
+
+<!-- ════════════════════════ MODAL: 교재 미리보기 ════════════════════════════ -->
+<div id="modal-mat-preview" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">📚 교재 미리보기</div>
+        <div class="modal-subtitle" id="mp-date"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-mat-preview')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="mp-domain-badge" class="mat-preview-domain"></div>
+      <div style="font-size:15px;font-weight:600;color:#111;margin-bottom:4px;" id="mp-type-topic"></div>
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:2px;" id="mp-ssn"></div>
+      <div class="mat-preview-why" id="mp-why"></div>
+      <div class="mat-preview-not-ready" id="mp-not-ready" style="display:none;">⏳ 이 교재는 현재 준비 중입니다. 수업 전에 확인해주세요.</div>
+      <div id="mp-completed-check" style="display:none;align-items:center;gap:8px;margin-bottom:14px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;">
+          <input type="checkbox" id="mp-completed-chk" onchange="mpToggleComplete(this.checked)" style="width:16px;height:16px;accent-color:#16a34a;">
+          수업 완료로 표시
+        </label>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn-sm btn-sm-primary" onclick="openLessonStart()">▶ 수업 시작</button>
+        <button class="btn-sm btn-sm-ghost" onclick="closeModal('modal-mat-preview');openMatSearch()">🔄 다른 교재로 변경</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ MODAL: 교재 검색 ═══════════════════════════════ -->
+<div id="modal-mat-search" class="modal-overlay">
+  <div class="modal-card modal-wide">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">🔍 교재 검색</div>
+        <div class="modal-subtitle" id="ms-date-hint" style="color:#2563eb;font-weight:600;"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-mat-search')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="mat-search-row">
+        <select id="ms-domain-sel" class="mat-search-select" onchange="renderMatSearchResults()">
+          <option value="">인지영역 전체</option>
+        </select>
+        <select id="ms-type-sel" class="mat-search-select" onchange="renderMatSearchResults()">
+          <option value="">문제유형 전체</option>
+        </select>
+        <input type="text" id="ms-topic-input" class="mat-search-input" placeholder="활동주제 검색..." oninput="renderMatSearchResults()">
+      </div>
+      <div id="ms-results" class="mat-result-list">
+        <div style="text-align:center;padding:28px;color:#9ca3af;font-size:13px;">검색 결과가 여기에 표시됩니다</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ MODAL: 수업 시작 ═══════════════════════════════ -->
+<div id="modal-lesson-start" class="modal-overlay">
+  <div class="modal-card modal-wide">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">▶ 수업 시작</div>
+        <div class="modal-subtitle" id="ls-date"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-lesson-start')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="lesson-start-info">
+        <strong>인지영역:</strong> <span id="ls-domain"></span><br>
+        <strong>문제유형:</strong> <span id="ls-type"></span><br>
+        <strong>활동주제:</strong> <span id="ls-topic"></span><br>
+        <strong>SSN:</strong> <span id="ls-ssn" style="font-family:monospace;font-size:12px;"></span>
+      </div>
+      <div class="section-title" style="margin-bottom:10px;">어르신별 난이도 지정</div>
+      <table class="senior-diff-table">
+        <thead><tr><th>어르신</th><th>요양등급</th><th>난이도</th></tr></thead>
+        <tbody id="ls-seniors-tbody"></tbody>
+      </table>
+      <div class="print-summary" id="ls-print-summary"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn-primary" onclick="printLesson()">🖨️ 인쇄하기</button>
+        <button class="btn-secondary" onclick="closeModal('modal-lesson-start')">취소</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1131,20 +1318,22 @@ async function doMemberReg() {
 
 // ── TABS ─────────────────────────────────────────────────────────────────────
 function switchAdminTab(tab) {
-  ['info','seniors','members'].forEach(t => {
+  ['info','seniors','members','calendar'].forEach(t => {
     document.getElementById('atab-'+t).classList.toggle('active', t===tab);
     document.getElementById('apane-'+t).classList.toggle('active', t===tab);
   });
-  if (tab==='seniors') renderSeniors('admin-grid','');
-  if (tab==='members') renderMembersTable();
+  if (tab==='seniors')  renderSeniors('admin-grid','');
+  if (tab==='members')  renderMembersTable();
+  if (tab==='calendar') showCalendar('apane-calendar');
 }
 function switchMemberTab(tab) {
-  ['seniors','record'].forEach(t => {
+  ['seniors','record','calendar'].forEach(t => {
     document.getElementById('mtab-'+t).classList.toggle('active', t===tab);
     document.getElementById('mpane-'+t).classList.toggle('active', t===tab);
   });
-  if (tab==='seniors') renderSeniors('member-grid','');
-  if (tab==='record')  initRecordForm();
+  if (tab==='seniors')  renderSeniors('member-grid','');
+  if (tab==='record')   initRecordForm();
+  if (tab==='calendar') showCalendar('mpane-calendar');
 }
 
 // ── MEMBERS TABLE ─────────────────────────────────────────────────────────────
@@ -1328,6 +1517,7 @@ function openSeniorReg() {
   ['sreg-name','sreg-notes'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('sreg-birth').value='';
   document.getElementById('sreg-gender').value='';
+  document.getElementById('sreg-grade').value='';
   document.getElementById('sreg-alert').classList.remove('visible');
   openModal('modal-sreg');
 }
@@ -1336,15 +1526,23 @@ async function submitSeniorReg() {
   const birth=document.getElementById('sreg-birth').value;
   const gender=document.getElementById('sreg-gender').value;
   const notes=document.getElementById('sreg-notes').value.trim();
+  const grade=document.getElementById('sreg-grade').value;
   const al=document.getElementById('sreg-alert');
   if (!name||!birth||!gender) { showAlert(al,'성함, 생년월일, 성별은 필수입니다.'); return; }
   const session=getSession(); if (!session) return;
   setBtnLoading('sreg-btn', true);
   try {
+    const seniorId=genId('SEN');
     await dbInsert('seniors',{
-      senior_id:genId('SEN'), name, birth_date:birth, gender, notes,
+      senior_id:seniorId, name, birth_date:birth, gender, notes,
       center_id:session.center_id, is_active:true, created_at:new Date().toISOString()
     });
+    if (grade) {
+      const gk='care_grades_'+session.center_id;
+      const gd=JSON.parse(localStorage.getItem(gk)||'{}');
+      gd[seniorId]=grade;
+      localStorage.setItem(gk,JSON.stringify(gd));
+    }
     closeModal('modal-sreg');
     if (document.getElementById('apane-seniors').classList.contains('active')) renderSeniors('admin-grid','');
     if (document.getElementById('mpane-seniors').classList.contains('active'))  renderSeniors('member-grid','');
@@ -1367,6 +1565,10 @@ async function openSeniorDetail(sid) {
     document.getElementById('sd-name').textContent=senior.name+' 어르신';
     document.getElementById('sd-meta').textContent='만 '+calcAge(senior.birth_date)+'세 · '+(senior.gender==='m'?'남성':'여성');
     document.getElementById('sd-birth').textContent=fmtBirth(senior.birth_date);
+    const gk2='care_grades_'+(getSession()?.center_id||'');
+    const gd2=JSON.parse(localStorage.getItem(gk2)||'{}');
+    const gradeVal=gd2[senior.senior_id]||'';
+    document.getElementById('sd-grade').textContent=gradeVal?(gradeVal==='인지지원'?'인지지원등급':gradeVal+'등급'):'미설정';
     document.getElementById('sd-notes').textContent=senior.notes||'없음';
     const btn=document.getElementById('sd-active-btn');
     if (senior.is_active) { btn.textContent='퇴소 처리'; btn.className='btn-sm btn-sm-danger'; }
@@ -1931,6 +2133,488 @@ function showLoginRequired() {
 function initGuestHelpLevel() {
   const defaultBtn = document.querySelector('#s-guest .help-level-btn[data-level="verbal"]');
   if (defaultBtn) selectGuestHelpLevel(defaultBtn);
+}
+
+// ── CALENDAR ─────────────────────────────────────────────────────────────────
+
+const DOMAIN_GOALS = [
+  { name:'기억력',    goal:10 },
+  { name:'집행기능',  goal:6  },
+  { name:'지남력',    goal:5  },
+  { name:'언어기능',  goal:4  },
+  { name:'주의력',    goal:3  },
+  { name:'시공간기능', goal:2 },
+];
+
+var _calYear     = new Date().getFullYear();
+var _calMonth    = new Date().getMonth(); // 0-indexed
+var _calPlan     = {}; // {dateStr: {ssn, domain, type, topic, is_completed, is_changed, senior_difficulties}}
+var _calMats     = []; // materials from Supabase
+var _calSeniors  = []; // active seniors
+var _calSelDate  = null;
+var _calCenterId = null;
+var _calCenterName = '';
+var _calMatsLoaded = false;
+
+function getLocalCareGrades() {
+  try { return JSON.parse(localStorage.getItem('care_grades_' + (_calCenterId||'')) || '{}'); } catch(e) { return {}; }
+}
+
+function recommendedDiff(grade) {
+  if (!grade) return 'B';
+  if (grade === '1' || grade === '2') return 'A';
+  if (grade === '5' || grade === '인지지원') return 'C';
+  return 'B';
+}
+
+function gradeLabel(g) {
+  if (!g) return '미설정';
+  return g === '인지지원' ? '인지지원등급' : g + '등급';
+}
+
+async function showCalendar(paneId) {
+  const shared = document.getElementById('cal-shared');
+  const pane   = document.getElementById(paneId);
+  if (!shared || !pane) return;
+  pane.appendChild(shared);
+  shared.style.display = 'block';
+
+  const session = getSession();
+  if (!session) return;
+  _calCenterId = session.center_id;
+
+  // Center name
+  if (!_calCenterName) {
+    try { const c = await dbOne('centers',{center_id:_calCenterId}); _calCenterName = c ? c.name : ''; } catch(e) {}
+  }
+
+  // Lesson plan from localStorage
+  try { _calPlan = JSON.parse(localStorage.getItem('lesson_plan_' + _calCenterId)) || {}; } catch(e) { _calPlan = {}; }
+
+  // Seniors
+  try { _calSeniors = await dbAll('seniors', {center_id:_calCenterId, is_active:true}); } catch(e) { _calSeniors = []; }
+
+  // Materials (lazy-load once)
+  if (!_calMatsLoaded) {
+    try {
+      const mats = await dbAll('materials');
+      _calMats = mats.sort((a,b) => (a.priority||99) - (b.priority||99));
+      _calMatsLoaded = true;
+    } catch(e) { console.error('materials load error:', e); }
+  }
+
+  renderCalHeader();
+  renderCalCells();
+  renderDomainChart();
+}
+
+function saveCalPlan() {
+  if (!_calCenterId) return;
+  localStorage.setItem('lesson_plan_' + _calCenterId, JSON.stringify(_calPlan));
+}
+
+function calNav(dir) {
+  _calMonth += dir;
+  if (_calMonth > 11) { _calMonth = 0; _calYear++; }
+  if (_calMonth < 0)  { _calMonth = 11; _calYear--; }
+  renderCalHeader();
+  renderCalCells();
+  renderDomainChart();
+}
+
+function renderCalHeader() {
+  const el = document.getElementById('cal-month-label');
+  if (el) el.textContent = _calYear + '년 ' + (_calMonth + 1) + '월';
+}
+
+function renderCalCells() {
+  const cellsEl = document.getElementById('cal-cells');
+  if (!cellsEl) return;
+
+  const today = new Date().toISOString().slice(0,10);
+  const year = _calYear, month = _calMonth;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  // Find starting date — skip if 1st is Sunday
+  let startD = 1;
+  let firstDow = new Date(year, month, 1).getDay(); // 0=Sun
+  if (firstDow === 0) { startD = 2; firstDow = 1; }
+  const startOffset = firstDow - 1; // Mon=0,...,Sat=5
+
+  let html = '';
+  let cellCount = startOffset;
+
+  for (let i = 0; i < startOffset; i++) html += '<div class="cal-cell empty"></div>';
+
+  for (let d = startD; d <= daysInMonth; d++) {
+    const dow = new Date(year, month, d).getDay();
+    if (dow === 0) continue; // skip Sunday
+
+    const dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    const isToday = dateStr === today;
+    const isFirst = d === 1;
+    const plan = _calPlan[dateStr];
+    const matInfo = (plan && plan.ssn) ? _calMats.find(m => m.ssn === plan.ssn) : null;
+
+    let cellCls = 'cal-cell' + (isToday ? ' today' : '');
+    let content = '<div class="cal-date">' + d + '</div>';
+
+    if (isFirst && !plan) {
+      content += '<div class="cal-lesson-chip cal-lesson-orient">지남력 수업</div>';
+    } else if (plan) {
+      const chipCls = plan.is_completed ? 'cal-lesson-done' : 'cal-lesson-plan';
+      content += '<div class="cal-lesson-chip ' + chipCls + '">' + (plan.domain||'수업') + '</div>';
+      if (plan.topic) content += '<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;">' + plan.topic + '</div>';
+    }
+
+    const notReady = matInfo && matInfo.is_ready === false;
+    const icons = (plan && plan.is_changed ? '✏️' : '') + (notReady ? '⏳' : '');
+    if (icons) content += '<div class="cal-icons">' + icons + '</div>';
+
+    html += '<div class="' + cellCls + '" onclick="clickCalDate(\'' + dateStr + '\')">' + content + '</div>';
+    cellCount++;
+  }
+
+  const rem = cellCount % 6;
+  if (rem > 0) for (let i = 0; i < 6 - rem; i++) html += '<div class="cal-cell empty"></div>';
+
+  cellsEl.innerHTML = html;
+}
+
+function renderDomainChart() {
+  const el = document.getElementById('cal-domain-chart');
+  if (!el) return;
+
+  const monthStr = _calYear + '-' + String(_calMonth+1).padStart(2,'0');
+  const counts = {};
+  DOMAIN_GOALS.forEach(d => { counts[d.name] = 0; });
+
+  Object.entries(_calPlan).forEach(([date, plan]) => {
+    if (!date.startsWith(monthStr)) return;
+    if (plan.is_completed && plan.domain && counts[plan.domain] !== undefined) counts[plan.domain]++;
+  });
+
+  const maxGoal = 10;
+  let html = '<div class="domain-chart-title">📊 이달 영역별 수업 현황</div>';
+
+  DOMAIN_GOALS.forEach(d => {
+    const done = counts[d.name] || 0;
+    const isWeak = done < d.goal / 2;
+    const goalPct  = (d.goal / maxGoal * 100).toFixed(0);
+    const donePct  = done > 0 ? (done / maxGoal * 100).toFixed(0) : 0;
+    html += '<div class="domain-bar-row">' +
+      '<div class="domain-bar-label' + (isWeak ? ' domain-weak' : '') + '">' + d.name + (isWeak ? ' ⚠️' : '') + '</div>' +
+      '<div class="domain-bar-track">' +
+        '<div class="domain-bar-goal" style="width:' + goalPct + '%"></div>' +
+        '<div class="domain-bar-done" style="width:' + donePct + '%"></div>' +
+      '</div>' +
+      '<div class="domain-bar-count">' + done + '/' + d.goal + '</div>' +
+    '</div>';
+  });
+
+  el.innerHTML = html;
+}
+
+// ── Calendar date click ────────────────────────────────────────────────────────
+function clickCalDate(dateStr) {
+  _calSelDate = dateStr;
+  const plan = _calPlan[dateStr];
+  const parts = dateStr.split('-');
+  const d = parseInt(parts[2]);
+  const m = parseInt(parts[1]);
+  const y = parts[0];
+  const dowNames = ['일','월','화','수','목','금','토'];
+  const dayName = dowNames[new Date(dateStr).getDay()];
+
+  document.getElementById('mp-date').textContent = y + '년 ' + m + '월 ' + d + '일 (' + dayName + ')';
+
+  if (d === 1 && !plan) {
+    document.getElementById('mp-domain-badge').textContent = '지남력';
+    document.getElementById('mp-domain-badge').style.cssText = 'background:#ede9fe;color:#6d28d9;';
+    document.getElementById('mp-type-topic').textContent = '날짜·계절 오리엔테이션';
+    document.getElementById('mp-ssn').textContent = '';
+    document.getElementById('mp-why').textContent = '매월 첫 수업은 현재 날짜, 요일, 계절 등을 인식하는 지남력 훈련으로 시작합니다. 교재를 지정하려면 "다른 교재로 변경"을 누르세요.';
+    document.getElementById('mp-not-ready').style.display = 'none';
+    document.getElementById('mp-completed-check').style.display = 'none';
+  } else if (plan) {
+    const mat = plan.ssn ? _calMats.find(m => m.ssn === plan.ssn) : null;
+    document.getElementById('mp-domain-badge').textContent = plan.domain || '미지정';
+    document.getElementById('mp-domain-badge').style.cssText = 'background:#dbeafe;color:#1e40af;';
+    document.getElementById('mp-type-topic').textContent = (plan.type||'') + (plan.topic ? ' · ' + plan.topic : '');
+    document.getElementById('mp-ssn').textContent = plan.ssn ? 'SSN: ' + plan.ssn : '';
+    document.getElementById('mp-why').textContent = mat ? (mat.description||'설명이 없습니다.') : '교재 설명을 불러오는 중...';
+    document.getElementById('mp-not-ready').style.display = (mat && mat.is_ready === false) ? 'block' : 'none';
+    document.getElementById('mp-completed-check').style.display = 'flex';
+    document.getElementById('mp-completed-chk').checked = plan.is_completed || false;
+  } else {
+    document.getElementById('mp-domain-badge').textContent = '미지정';
+    document.getElementById('mp-domain-badge').style.cssText = 'background:#f3f4f6;color:#6b7280;';
+    document.getElementById('mp-type-topic').textContent = '교재를 지정해주세요';
+    document.getElementById('mp-ssn').textContent = '';
+    document.getElementById('mp-why').textContent = '';
+    document.getElementById('mp-not-ready').style.display = 'none';
+    document.getElementById('mp-completed-check').style.display = 'none';
+  }
+
+  openModal('modal-mat-preview');
+}
+
+function mpToggleComplete(checked) {
+  if (!_calSelDate || !_calPlan[_calSelDate]) return;
+  _calPlan[_calSelDate].is_completed = checked;
+  saveCalPlan();
+  renderCalCells();
+  renderDomainChart();
+}
+
+// ── Material search ────────────────────────────────────────────────────────────
+function openMatSearchFromCal() {
+  if (!_calSelDate) { alert('먼저 달력에서 날짜를 클릭해주세요.'); return; }
+  openMatSearch();
+}
+
+async function openMatSearch() {
+  if (!_calMatsLoaded) {
+    try {
+      const mats = await dbAll('materials');
+      _calMats = mats.sort((a,b) => (a.priority||99) - (b.priority||99));
+      _calMatsLoaded = true;
+    } catch(e) { alert('교재 불러오기 실패: ' + e.message); return; }
+  }
+
+  const domains = [...new Set(_calMats.map(m => m.domain).filter(Boolean))].sort();
+  const types   = [...new Set(_calMats.map(m => m.type).filter(Boolean))].sort();
+
+  const domSel  = document.getElementById('ms-domain-sel');
+  const typeSel = document.getElementById('ms-type-sel');
+  domSel.innerHTML  = '<option value="">인지영역 전체</option>' + domains.map(d => '<option value="'+d+'">'+d+'</option>').join('');
+  typeSel.innerHTML = '<option value="">문제유형 전체</option>' + types.map(t => '<option value="'+t+'">'+t+'</option>').join('');
+  document.getElementById('ms-topic-input').value = '';
+
+  const hint = document.getElementById('ms-date-hint');
+  if (_calSelDate) {
+    const p = _calSelDate.split('-');
+    hint.textContent = p[0] + '년 ' + parseInt(p[1]) + '월 ' + parseInt(p[2]) + '일에 배정';
+  } else {
+    hint.textContent = '';
+  }
+
+  renderMatSearchResults();
+  openModal('modal-mat-search');
+}
+
+function renderMatSearchResults() {
+  const domain = document.getElementById('ms-domain-sel').value;
+  const type   = document.getElementById('ms-type-sel').value;
+  const topic  = document.getElementById('ms-topic-input').value.trim();
+
+  let filtered = _calMats;
+  if (domain) filtered = filtered.filter(m => m.domain === domain);
+  if (type)   filtered = filtered.filter(m => m.type === type);
+  if (topic)  filtered = filtered.filter(m => m.topic && m.topic.includes(topic));
+
+  const list = document.getElementById('ms-results');
+  if (!filtered.length) {
+    list.innerHTML = '<div style="text-align:center;padding:28px;color:#9ca3af;font-size:13px;">검색 결과가 없습니다.</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(m => {
+    const notReady = m.is_ready === false;
+    const lvl = m.level ? ' · 난이도 ' + m.level : '';
+    return '<div class="mat-result-item' + (notReady ? ' mat-not-ready' : '') + '" onclick="assignMaterial(\'' + m.ssn + '\')">' +
+      '<div class="mat-result-domain">' + (m.domain||'') + '</div>' +
+      '<div class="mat-result-title">' + (m.type||'') + (m.topic ? ' · ' + m.topic : '') +
+        (notReady ? ' <span style="color:#d97706;font-size:11px;">⏳ 준비중</span>' : '') + '</div>' +
+      '<div class="mat-result-sub">SSN: ' + m.ssn + lvl + (m.season ? ' · ' + m.season : '') + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function assignMaterial(ssn) {
+  if (!_calSelDate) { closeModal('modal-mat-search'); return; }
+  const mat = _calMats.find(m => m.ssn === ssn);
+  if (!mat) return;
+
+  const existing = _calPlan[_calSelDate];
+  const isChange = !!(existing && existing.ssn && existing.ssn !== ssn);
+
+  _calPlan[_calSelDate] = {
+    ssn: mat.ssn,
+    domain: mat.domain || '',
+    type:   mat.type   || '',
+    topic:  mat.topic  || '',
+    is_completed: existing ? !!existing.is_completed : false,
+    is_changed:   isChange,
+    senior_difficulties: existing ? (existing.senior_difficulties || {}) : {},
+  };
+
+  saveCalPlan();
+  renderCalCells();
+  renderDomainChart();
+  closeModal('modal-mat-search');
+  closeModal('modal-mat-preview');
+}
+
+// ── Lesson start ────────────────────────────────────────────────────────────────
+function openLessonStart() {
+  if (!_calSelDate) return;
+  const plan = _calPlan[_calSelDate] || {};
+  const mat  = plan.ssn ? _calMats.find(m => m.ssn === plan.ssn) : null;
+
+  const p = _calSelDate.split('-');
+  document.getElementById('ls-date').textContent = p[0] + '년 ' + parseInt(p[1]) + '월 ' + parseInt(p[2]) + '일';
+  document.getElementById('ls-domain').textContent = (mat && mat.domain) || plan.domain || '';
+  document.getElementById('ls-type').textContent   = (mat && mat.type)   || plan.type   || '';
+  document.getElementById('ls-topic').textContent  = (mat && mat.topic)  || plan.topic  || '';
+  document.getElementById('ls-ssn').textContent    = (mat && mat.ssn)    || plan.ssn    || '';
+
+  const grades  = getLocalCareGrades();
+  const saved   = plan.senior_difficulties || {};
+  const tbody   = document.getElementById('ls-seniors-tbody');
+
+  if (!_calSeniors.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#9ca3af;padding:16px;">등록된 어르신이 없습니다.</td></tr>';
+  } else {
+    tbody.innerHTML = _calSeniors.map(s => {
+      const g    = grades[s.senior_id] || '';
+      const rec  = recommendedDiff(g);
+      const cur  = saved[s.senior_id] || rec;
+      return '<tr>' +
+        '<td><strong>' + s.name + '</strong></td>' +
+        '<td style="font-size:12px;color:#6b7280;">' + gradeLabel(g) + (g ? ' → 권장' + rec : '') + '</td>' +
+        '<td><select class="diff-select" data-senior="' + s.senior_id + '" onchange="updateDiffSel(this)">' +
+          ['A','B','C'].map(v => '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+v+'등급</option>').join('') +
+        '</select></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  updatePrintSummary();
+  closeModal('modal-mat-preview');
+  openModal('modal-lesson-start');
+}
+
+function updateDiffSel(sel) {
+  if (!_calSelDate) return;
+  if (!_calPlan[_calSelDate]) _calPlan[_calSelDate] = {};
+  if (!_calPlan[_calSelDate].senior_difficulties) _calPlan[_calSelDate].senior_difficulties = {};
+  _calPlan[_calSelDate].senior_difficulties[sel.dataset.senior] = sel.value;
+  saveCalPlan();
+  updatePrintSummary();
+}
+
+function updatePrintSummary() {
+  const selects = document.querySelectorAll('#ls-seniors-tbody .diff-select');
+  const counts = {A:0, B:0, C:0};
+  selects.forEach(sel => { const v = sel.value; if (v in counts) counts[v]++; });
+
+  const lines = [];
+  if (counts.A) lines.push('A등급 × ' + counts.A + '부');
+  if (counts.B) lines.push('B등급 × ' + counts.B + '부');
+  if (counts.C) lines.push('C등급 × ' + counts.C + '부');
+  lines.push('교사 가이드 × 1부');
+  const total = counts.A + counts.B + counts.C + 1;
+  lines.push('총 인쇄: ' + total + '부');
+
+  document.getElementById('ls-print-summary').textContent = lines.join('\n');
+}
+
+function printLesson() {
+  if (!_calSelDate) return;
+  const plan = _calPlan[_calSelDate] || {};
+  const mat  = plan.ssn ? _calMats.find(m => m.ssn === plan.ssn) : null;
+
+  // Save difficulty assignments from DOM
+  const selects = document.querySelectorAll('#ls-seniors-tbody .diff-select');
+  const counts = {A:0, B:0, C:0};
+  const diffs  = {};
+  selects.forEach(sel => {
+    diffs[sel.dataset.senior] = sel.value;
+    const v = sel.value; if (v in counts) counts[v]++;
+  });
+  if (_calPlan[_calSelDate]) {
+    _calPlan[_calSelDate].senior_difficulties = diffs;
+    _calPlan[_calSelDate].is_completed = true;
+    saveCalPlan();
+    renderCalCells();
+    renderDomainChart();
+  }
+
+  const p = _calSelDate.split('-');
+  const dateLabel  = p[0] + '년 ' + parseInt(p[1]) + '월 ' + parseInt(p[2]) + '일';
+  const watermark  = _calCenterName + ' · ' + dateLabel;
+  const domain     = (mat && mat.domain) || plan.domain || '';
+  const type       = (mat && mat.type)   || plan.type   || '';
+  const topic      = (mat && mat.topic)  || plan.topic  || '';
+  const ssn        = (mat && mat.ssn)    || plan.ssn    || '';
+
+  const printLines = [];
+  if (counts.A) printLines.push('A등급 × ' + counts.A + '부' + (mat && mat.pdf_url ? ' <a href="' + mat.pdf_url + '" target="_blank">[PDF]</a>' : ''));
+  if (counts.B) printLines.push('B등급 × ' + counts.B + '부');
+  if (counts.C) printLines.push('C등급 × ' + counts.C + '부');
+  printLines.push('교사 가이드 × 1부' + (mat && mat.guide_url ? ' <a href="' + mat.guide_url + '" target="_blank">[가이드]</a>' : ''));
+
+  const grades     = getLocalCareGrades();
+  const seniorRows = _calSeniors.map(s => {
+    const diff = diffs[s.senior_id] || '-';
+    const g    = gradeLabel(grades[s.senior_id] || '');
+    return '<tr><td>' + s.name + ' 어르신</td><td>' + g + '</td><td><strong style="font-size:15px;">' + diff + '</strong></td></tr>';
+  }).join('');
+
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head>
+<meta charset="UTF-8"><title>수업 시작 — ${dateLabel}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Malgun Gothic','Noto Sans KR',sans-serif;background:#f3f4f6;}
+.watermark{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);
+  font-size:52px;font-weight:900;color:rgba(0,0,0,.05);pointer-events:none;z-index:0;white-space:nowrap;}
+.page{position:relative;z-index:1;max-width:680px;margin:32px auto;background:#fff;
+  padding:36px 44px;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.12);}
+.hdr{border-bottom:3px solid #1d4ed8;padding-bottom:12px;margin-bottom:20px;}
+.hdr-title{font-size:20px;font-weight:700;color:#1d4ed8;}
+.hdr-sub{font-size:13px;color:#6b7280;margin-top:3px;}
+.info{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#eff6ff;border-radius:8px;padding:14px;margin-bottom:18px;}
+.info-item label{font-size:11px;font-weight:700;color:#6b7280;display:block;margin-bottom:2px;}
+.info-item span{font-size:14px;font-weight:600;color:#1e40af;}
+.print-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px;margin-bottom:18px;}
+.print-box h3{font-size:13px;font-weight:700;color:#166534;margin-bottom:8px;}
+.print-box p{font-size:13px;color:#166534;margin:3px 0;line-height:1.8;}
+h2{font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:#f9fafb;padding:8px 10px;text-align:left;font-weight:600;color:#6b7280;border-bottom:1px solid #e5e7eb;}
+td{padding:8px 10px;border-bottom:1px solid #f3f4f6;color:#374151;}
+a{color:#2563eb;}
+@media print{body{background:#fff}.page{box-shadow:none;margin:0;border-radius:0;max-width:none;}}
+</style></head><body>
+<div class="watermark">${watermark}</div>
+<div class="page">
+  <div class="hdr">
+    <div class="hdr-title">📋 수업 시작 정보</div>
+    <div class="hdr-sub">${_calCenterName} &nbsp;·&nbsp; ${dateLabel}</div>
+  </div>
+  <div class="info">
+    <div class="info-item"><label>인지 영역</label><span>${domain}</span></div>
+    <div class="info-item"><label>문제 유형</label><span>${type}</span></div>
+    <div class="info-item"><label>활동 주제</label><span>${topic}</span></div>
+    <div class="info-item"><label>교재 SSN</label><span style="font-family:monospace;font-size:12px;">${ssn}</span></div>
+  </div>
+  <div class="print-box">
+    <h3>🖨️ 인쇄 목록</h3>
+    ${printLines.map(l => '<p>· ' + l + '</p>').join('')}
+  </div>
+  <h2>👴 어르신별 난이도</h2>
+  <table>
+    <thead><tr><th>어르신</th><th>요양등급</th><th>난이도</th></tr></thead>
+    <tbody>${seniorRows}</tbody>
+  </table>
+</div>
+<script>setTimeout(()=>window.print(),500);<\/script>
+</body></html>`);
+  w.document.close();
+
+  closeModal('modal-lesson-start');
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
