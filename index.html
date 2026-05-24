@@ -2222,9 +2222,9 @@ async function updateScheduleRow(dateStr, updates) {
     } else {
       const { _id, senior_difficulties, ...dbRow } = plan;
       const { data, error } = await sb.from('schedules')
-        .upsert({ center_id: _calCenterId, date: dateStr, ...dbRow, ...updates }, { onConflict: 'center_id,date' })
+        .insert({ center_id: _calCenterId, date: dateStr, ...dbRow, ...updates })
         .select();
-      if (error) console.error('updateScheduleRow upsert error:', error);
+      if (error) console.error('updateScheduleRow insert error:', error);
       else if (data?.[0] && _calPlan[dateStr]) _calPlan[dateStr]._id = data[0].id;
     }
   } catch(e) { console.error('updateScheduleRow exception:', e); }
@@ -2273,6 +2273,7 @@ function buildDomainSequence(slots) {
 // ── 월간 스케줄 자동 생성 ────────────────────────────────────────────────────
 function generateMonthSchedule(year, month) {
   const workDays = getWorkingDays(year, month);
+  console.log('[schedule] generateMonthSchedule', year, month+1, '| workDays:', workDays.length, '| _calMats:', _calMats.length);
   if (!workDays.length || !_calMats.length) return [];
 
   const byDomain = {};
@@ -2354,29 +2355,55 @@ async function loadSchedulesForMonth(year, month) {
 async function ensureSchedulesLoaded(year, month) {
   const key = year + '-' + month;
   if (_calSchedulesLoaded.has(key)) return;
-  _calSchedulesLoaded.add(key);
+  if (!_calCenterId) { _calSchedulesLoaded.add(key); return; }
 
   try {
     const count = await loadSchedulesForMonth(year, month);
+    console.log('[schedule] loaded', count, 'rows for', year, month+1, '| mats:', _calMats.length);
+
     if (count === 0 && _calMats.length > 0) {
-      const nextD  = new Date(year, month + 1, 1);
-      const rows   = [
+      const nextD   = new Date(year, month + 1, 1);
+      const allRows = [
         ...generateMonthSchedule(year, month),
         ...generateMonthSchedule(nextD.getFullYear(), nextD.getMonth()),
       ];
-      if (rows.length) {
-        const { error } = await sb.from('schedules')
-          .upsert(rows, { onConflict: 'center_id,date', ignoreDuplicates: true });
-        if (error) throw error;
+      console.log('[schedule] generated', allRows.length, 'rows for 2 months');
+
+      if (allRows.length > 0) {
+        // 이미 존재하는 날짜 확인 후 신규만 INSERT (UNIQUE 제약 불필요)
+        const dates = allRows.map(r => r.date);
+        const { data: existing, error: selErr } = await sb.from('schedules')
+          .select('date').eq('center_id', _calCenterId).in('date', dates);
+        if (selErr) throw selErr;
+
+        const existingDates = new Set((existing||[]).map(r => r.date));
+        const newRows = allRows.filter(r => !existingDates.has(r.date));
+        console.log('[schedule] inserting', newRows.length, 'new rows (', existingDates.size, 'already exist)');
+
+        if (newRows.length > 0) {
+          const { error: insErr } = await sb.from('schedules').insert(newRows);
+          if (insErr) throw insErr;
+        }
+
+        // 삽입 후 재로드 (id 포함)
         await loadSchedulesForMonth(year, month);
+        _calSchedulesLoaded.add(key);
+
         const nk = nextD.getFullYear() + '-' + nextD.getMonth();
         if (!_calSchedulesLoaded.has(nk)) {
-          _calSchedulesLoaded.add(nk);
           await loadSchedulesForMonth(nextD.getFullYear(), nextD.getMonth());
+          _calSchedulesLoaded.add(nk);
         }
+      } else {
+        _calSchedulesLoaded.add(key);
       }
+    } else {
+      _calSchedulesLoaded.add(key);
     }
-  } catch(e) { console.error('ensureSchedulesLoaded error:', e); }
+  } catch(e) {
+    console.error('[schedule] ensureSchedulesLoaded error:', e);
+    // _calSchedulesLoaded에 추가하지 않아 다음 호출 시 재시도
+  }
 }
 
 function getLocalCareGrades() {
@@ -2714,18 +2741,28 @@ function assignMaterial(ssn) {
     senior_difficulties: existing ? (existing.senior_difficulties || {}) : {},
   };
 
-  // Supabase upsert (non-blocking)
-  sb.from('schedules').upsert({
-    center_id: _calCenterId, date: _calSelDate,
-    ssn: mat.ssn, set_no: mat.set_no || null,
-    domain: mat.domain || '', type: mat.type || '', topic: mat.topic || '',
-    is_changed: isChange,
-    is_completed: existing ? !!existing.is_completed : false,
-  }, { onConflict: 'center_id,date' }).select()
-    .then(({ data, error }) => {
-      if (error) console.error('assignMaterial upsert error:', error);
-      else if (data?.[0] && _calPlan[_calSelDate]) _calPlan[_calSelDate]._id = data[0].id;
-    });
+  // Supabase 저장 (non-blocking): _id 있으면 UPDATE, 없으면 INSERT
+  const existingId = existing?._id;
+  if (existingId) {
+    sb.from('schedules').update({
+      ssn: mat.ssn, set_no: mat.set_no || null,
+      domain: mat.domain || '', type: mat.type || '', topic: mat.topic || '',
+      is_changed: isChange,
+    }).eq('id', existingId)
+      .then(({ error }) => { if (error) console.error('assignMaterial update error:', error); });
+  } else {
+    sb.from('schedules').insert({
+      center_id: _calCenterId, date: _calSelDate,
+      ssn: mat.ssn, set_no: mat.set_no || null,
+      domain: mat.domain || '', type: mat.type || '', topic: mat.topic || '',
+      is_changed: isChange,
+      is_completed: existing ? !!existing.is_completed : false,
+    }).select()
+      .then(({ data, error }) => {
+        if (error) console.error('assignMaterial insert error:', error);
+        else if (data?.[0] && _calPlan[_calSelDate]) _calPlan[_calSelDate]._id = data[0].id;
+      });
+  }
 
   renderCalCells();
   renderDomainChart();
