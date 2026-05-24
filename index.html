@@ -364,7 +364,7 @@
     .mat-result-domain { font-size:11px; font-weight:600; background:#dbeafe; color:#1e40af; padding:1px 7px; border-radius:10px; margin-bottom:4px; display:inline-block; }
     .mat-result-title  { font-size:13px; font-weight:600; color:#111; margin-bottom:2px; }
     .mat-result-sub    { font-size:11px; color:#9ca3af; }
-    .mat-not-ready     { opacity:.65; }
+    .mat-not-ready     { background:#f3f4f6 !important; opacity:.75; }
 
     /* ── Material preview ─────────────────────────────────────────────────── */
     .mat-preview-domain { font-size:12px; font-weight:700; padding:3px 10px; border-radius:10px; display:inline-block; margin-bottom:8px; }
@@ -1022,11 +1022,19 @@
       <div class="mat-search-row">
         <select id="ms-domain-sel" class="mat-search-select" onchange="renderMatSearchResults()">
           <option value="">인지영역 전체</option>
+          <option value="주의력">주의력</option>
+          <option value="언어기능">언어기능</option>
+          <option value="시공간기능">시공간기능</option>
+          <option value="기억력">기억력</option>
+          <option value="집행기능">집행기능</option>
+          <option value="지남력">지남력</option>
         </select>
         <select id="ms-type-sel" class="mat-search-select" onchange="renderMatSearchResults()">
           <option value="">문제유형 전체</option>
         </select>
-        <input type="text" id="ms-topic-input" class="mat-search-input" placeholder="활동주제 검색..." oninput="renderMatSearchResults()">
+        <select id="ms-topic-sel" class="mat-search-select" onchange="renderMatSearchResults()">
+          <option value="">활동주제 전체</option>
+        </select>
       </div>
       <div id="ms-results" class="mat-result-list">
         <div style="text-align:center;padding:28px;color:#9ca3af;font-size:13px;">검색 결과가 여기에 표시됩니다</div>
@@ -2441,20 +2449,22 @@ function openMatSearchFromCal() {
 async function openMatSearch() {
   if (!_calMatsLoaded) {
     try {
-      const mats = await dbAll('materials');
-      _calMats = mats.sort((a,b) => (a.priority||99) - (b.priority||99));
+      // 세트 단위 조회: level='A' 1개씩만 가져와 세트 대표로 사용
+      const { data, error } = await sb.from('materials').select('*').eq('level', 'A').order('set_no');
+      if (error) throw error;
+      _calMats = data || [];
       _calMatsLoaded = true;
     } catch(e) { alert('교재 불러오기 실패: ' + e.message); return; }
   }
 
-  const domains = [...new Set(_calMats.map(m => m.domain).filter(Boolean))].sort();
-  const types   = [...new Set(_calMats.map(m => m.type).filter(Boolean))].sort();
+  // 문제유형·활동주제: 로드된 데이터에서 distinct
+  const types  = [...new Set(_calMats.map(m => m.type).filter(Boolean))].sort();
+  const topics = [...new Set(_calMats.map(m => m.topic).filter(Boolean))].sort();
 
-  const domSel  = document.getElementById('ms-domain-sel');
-  const typeSel = document.getElementById('ms-type-sel');
-  domSel.innerHTML  = '<option value="">인지영역 전체</option>' + domains.map(d => '<option value="'+d+'">'+d+'</option>').join('');
-  typeSel.innerHTML = '<option value="">문제유형 전체</option>' + types.map(t => '<option value="'+t+'">'+t+'</option>').join('');
-  document.getElementById('ms-topic-input').value = '';
+  document.getElementById('ms-type-sel').innerHTML =
+    '<option value="">문제유형 전체</option>' + types.map(t => '<option value="'+t+'">'+t+'</option>').join('');
+  document.getElementById('ms-topic-sel').innerHTML =
+    '<option value="">활동주제 전체</option>' + topics.map(t => '<option value="'+t+'">'+t+'</option>').join('');
 
   const hint = document.getElementById('ms-date-hint');
   if (_calSelDate) {
@@ -2471,12 +2481,12 @@ async function openMatSearch() {
 function renderMatSearchResults() {
   const domain = document.getElementById('ms-domain-sel').value;
   const type   = document.getElementById('ms-type-sel').value;
-  const topic  = document.getElementById('ms-topic-input').value.trim();
+  const topic  = document.getElementById('ms-topic-sel').value;
 
   let filtered = _calMats;
   if (domain) filtered = filtered.filter(m => m.domain === domain);
   if (type)   filtered = filtered.filter(m => m.type === type);
-  if (topic)  filtered = filtered.filter(m => m.topic && m.topic.includes(topic));
+  if (topic)  filtered = filtered.filter(m => m.topic === topic);
 
   const list = document.getElementById('ms-results');
   if (!filtered.length) {
@@ -2486,12 +2496,13 @@ function renderMatSearchResults() {
 
   list.innerHTML = filtered.map(m => {
     const notReady = m.is_ready === false;
-    const lvl = m.level ? ' · 난이도 ' + m.level : '';
+    const readyBadge = notReady
+      ? ' <span style="background:#e5e7eb;color:#6b7280;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;margin-left:6px;">준비 중</span>'
+      : '';
     return '<div class="mat-result-item' + (notReady ? ' mat-not-ready' : '') + '" onclick="assignMaterial(\'' + m.ssn + '\')">' +
-      '<div class="mat-result-domain">' + (m.domain||'') + '</div>' +
-      '<div class="mat-result-title">' + (m.type||'') + (m.topic ? ' · ' + m.topic : '') +
-        (notReady ? ' <span style="color:#d97706;font-size:11px;">⏳ 준비중</span>' : '') + '</div>' +
-      '<div class="mat-result-sub">SSN: ' + m.ssn + lvl + (m.season ? ' · ' + m.season : '') + '</div>' +
+      '<div class="mat-result-domain">' + (m.domain||'') + readyBadge + '</div>' +
+      '<div class="mat-result-title">' + (m.type||'') + (m.topic ? ' · ' + m.topic : '') + '</div>' +
+      '<div class="mat-result-sub">SSN: ' + (m.set_no || m.ssn) + (m.season ? ' · ' + m.season : '') + '</div>' +
     '</div>';
   }).join('');
 }
@@ -2500,6 +2511,11 @@ function assignMaterial(ssn) {
   if (!_calSelDate) { closeModal('modal-mat-search'); return; }
   const mat = _calMats.find(m => m.ssn === ssn);
   if (!mat) return;
+
+  if (mat.is_ready === false) {
+    alert('아직 준비 중인 교재입니다. 다른 교재를 선택해주세요.');
+    return;
+  }
 
   const existing = _calPlan[_calSelDate];
   const isChange = !!(existing && existing.ssn && existing.ssn !== ssn);
@@ -2517,6 +2533,17 @@ function assignMaterial(ssn) {
   saveCalPlan();
   renderCalCells();
   renderDomainChart();
+
+  // 수업공통정보 업데이트 (modal-lesson-start가 열려있는 경우)
+  const lsModal = document.getElementById('modal-lesson-start');
+  if (lsModal && lsModal.classList.contains('open')) {
+    const el = id => document.getElementById(id);
+    if (el('ls-domain')) el('ls-domain').textContent = mat.domain || '';
+    if (el('ls-type'))   el('ls-type').textContent   = mat.type   || '';
+    if (el('ls-topic'))  el('ls-topic').textContent  = mat.topic  || '';
+    if (el('ls-ssn'))    el('ls-ssn').textContent    = mat.ssn    || '';
+  }
+
   closeModal('modal-mat-search');
   closeModal('modal-mat-preview');
 }
