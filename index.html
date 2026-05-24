@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>실버스타노트</title>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans KR', sans-serif; background: #f3f4f6; min-height: 100vh; }
@@ -2649,18 +2650,25 @@ async function printLesson() {
   document.body.appendChild(toast);
 
   try {
-    const resp = await fetch('https://xgcslggptovavafnmhan.supabase.co/functions/v1/pdf-merge', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer sb_publishable_lSuNZkwgTyI-IKEvoLaoQQ_caQDr2FN'},
-      body: JSON.stringify({files})
-    });
-    if (!resp.ok) throw new Error('서버 오류: ' + resp.status);
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error);
-    const binary = atob(data.pdf);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const blob = new Blob([bytes], {type: 'application/pdf'});
+    const { PDFDocument } = PDFLib;
+    const merged = await PDFDocument.create();
+
+    for (const { url, copies } of files) {
+      if (!url || copies < 1) continue;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('PDF 다운로드 실패: ' + url + ' (' + res.status + ')');
+      const bytes = await res.arrayBuffer();
+      const src = await PDFDocument.load(bytes);
+      const pageCount = src.getPageCount();
+      for (let i = 0; i < copies; i++) {
+        const indices = Array.from({length: pageCount}, (_, p) => p);
+        const copied = await merged.copyPages(src, indices);
+        copied.forEach(page => merged.addPage(page));
+      }
+    }
+
+    const mergedBytes = await merged.save();
+    const blob = new Blob([mergedBytes], {type: 'application/pdf'});
     const blobUrl = URL.createObjectURL(blob);
     window.open(blobUrl, '_blank');
   } catch(e) {
