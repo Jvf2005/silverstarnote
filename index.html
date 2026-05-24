@@ -349,8 +349,10 @@
     .domain-bar-label.domain-weak { color:#ef4444; }
     .domain-bar-track { flex:1; position:relative; background:#e5e7eb; border-radius:9999px; height:16px; overflow:hidden; }
     .domain-bar-goal  { position:absolute; top:0; left:0; height:100%; background:#fef08a; border-radius:9999px; }
+    .domain-bar-sched { position:absolute; top:0; left:0; height:100%; background:#86efac; border-radius:9999px; transition:width .4s ease; }
     .domain-bar-done  { position:absolute; top:0; left:0; height:100%; background:#16a34a; border-radius:9999px; transition:width .4s ease; }
     .domain-bar-count { font-size:11px; color:#6b7280; width:36px; flex-shrink:0; text-align:right; }
+    .domain-sched-hint { font-size:10px; color:#9ca3af; margin-left:2px; }
 
     /* ── Material search ──────────────────────────────────────────────────── */
     .mat-search-row { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
@@ -2203,14 +2205,6 @@ var _calSchedulesLoaded = new Set(); // 'YYYY-M' keys already loaded from Supaba
 const DOMAIN_WEIGHTS = { 기억력:10, 집행기능:6, 지남력:5, 언어기능:4, 주의력:3, 시공간기능:2 };
 const DOMAIN_ORDER   = ['기억력','집행기능','지남력','언어기능','주의력','시공간기능'];
 
-// ── Senior difficulties → localStorage (schedules 테이블에 없는 컬럼) ─────────
-function getSeniorDiffs() {
-  try { return JSON.parse(localStorage.getItem('senior_diffs_' + (_calCenterId||'')) || '{}'); } catch(e) { return {}; }
-}
-function saveSeniorDiffs(diffs) {
-  if (_calCenterId) localStorage.setItem('senior_diffs_' + _calCenterId, JSON.stringify(diffs));
-}
-
 // ── Supabase schedules 단건 업데이트 ─────────────────────────────────────────
 async function updateScheduleRow(dateStr, updates) {
   const plan = _calPlan[dateStr];
@@ -2220,7 +2214,7 @@ async function updateScheduleRow(dateStr, updates) {
       const { error } = await sb.from('schedules').update(updates).eq('id', plan._id);
       if (error) console.error('updateScheduleRow error:', error);
     } else {
-      const { _id, senior_difficulties, ...dbRow } = plan;
+      const { _id, ...dbRow } = plan; // senior_difficulties 포함해서 INSERT
       const { data, error } = await sb.from('schedules')
         .insert({ center_id: _calCenterId, date: dateStr, ...dbRow, ...updates })
         .select();
@@ -2270,8 +2264,23 @@ function buildDomainSequence(slots) {
   return pool;
 }
 
+// ── 이전 달 완료 통계 → 부족 영역 보정 가중치 계산 ──────────────────────────
+function calcMonthStats(year, month) {
+  const monthStr = year + '-' + String(month+1).padStart(2,'0');
+  const done = {};
+  DOMAIN_ORDER.forEach(d => { done[d] = 0; });
+  Object.entries(_calPlan).forEach(([date, plan]) => {
+    if (!date.startsWith(monthStr)) return;
+    if (plan.is_completed && plan.domain && done[plan.domain] !== undefined) done[plan.domain]++;
+  });
+  // 각 영역 달성률 (완료/목표)
+  const rate = {};
+  DOMAIN_GOALS.forEach(({ name, goal }) => { rate[name] = goal > 0 ? (done[name] || 0) / goal : 1; });
+  return { done, rate };
+}
+
 // ── 월간 스케줄 자동 생성 ────────────────────────────────────────────────────
-function generateMonthSchedule(year, month) {
+function generateMonthSchedule(year, month, prevStats) {
   const workDays = getWorkingDays(year, month);
   console.log('[schedule] generateMonthSchedule', year, month+1, '| workDays:', workDays.length, '| _calMats:', _calMats.length);
   if (!workDays.length || !_calMats.length) return [];
@@ -2301,11 +2310,24 @@ function generateMonthSchedule(year, month) {
   if (!N) return schedule;
 
   // CIST 비율로 슬롯 계산 (Largest Remainder Method)
+  // prevStats가 있으면 달성률 낮은 영역에 가중치 보정 (최대 50% 증가)
   const totalW = 30;
+  const adaptedW = {};
+  DOMAIN_ORDER.forEach(d => {
+    const base = DOMAIN_WEIGHTS[d];
+    if (prevStats && prevStats.rate[d] !== undefined) {
+      const shortfall = Math.max(0, 1 - prevStats.rate[d]); // 0~1
+      adaptedW[d] = base * (1 + shortfall * 0.5);
+    } else {
+      adaptedW[d] = base;
+    }
+  });
+  const adaptedTotal = DOMAIN_ORDER.reduce((s, d) => s + adaptedW[d], 0);
+
   const slots = {};
   let assigned = 0;
-  DOMAIN_ORDER.forEach(d => { slots[d] = Math.floor(N * DOMAIN_WEIGHTS[d] / totalW); assigned += slots[d]; });
-  const rems = DOMAIN_ORDER.map(d => ({ d, r: (N * DOMAIN_WEIGHTS[d] / totalW) - slots[d] }))
+  DOMAIN_ORDER.forEach(d => { slots[d] = Math.floor(N * adaptedW[d] / adaptedTotal); assigned += slots[d]; });
+  const rems = DOMAIN_ORDER.map(d => ({ d, r: (N * adaptedW[d] / adaptedTotal) - slots[d] }))
     .sort((a,b) => b.r - a.r);
   let extra = N - assigned;
   rems.forEach(({ d }) => { if (extra > 0) { slots[d]++; extra--; } });
@@ -2331,8 +2353,6 @@ function generateMonthSchedule(year, month) {
 async function loadSchedulesForMonth(year, month) {
   const m   = String(month+1).padStart(2,'0');
   const end = year + '-' + m + '-' + new Date(year, month+1, 0).getDate();
-  const localDiffs = getSeniorDiffs();
-
   const { data, error } = await sb.from('schedules').select('*')
     .eq('center_id', _calCenterId)
     .gte('date', year + '-' + m + '-01')
@@ -2345,7 +2365,8 @@ async function loadSchedulesForMonth(year, month) {
       ssn: row.ssn, set_no: row.set_no,
       domain: row.domain, type: row.type, topic: row.topic,
       is_completed: !!row.is_completed, is_changed: !!row.is_changed,
-      senior_difficulties: localDiffs[row.date] || {},
+      senior_difficulties: row.senior_difficulties || {},
+      completed_at: row.completed_at || null,
     };
   });
   return (data||[]).length;
@@ -2362,11 +2383,12 @@ async function ensureSchedulesLoaded(year, month) {
     console.log('[schedule] loaded', count, 'rows for', year, month+1, '| mats:', _calMats.length);
 
     if (count === 0 && _calMats.length > 0) {
-      const nextD   = new Date(year, month + 1, 1);
-      const allRows = [
-        ...generateMonthSchedule(year, month),
-        ...generateMonthSchedule(nextD.getFullYear(), nextD.getMonth()),
-      ];
+      const nextD    = new Date(year, month + 1, 1);
+      // 이번 달 생성 후, 다음 달은 이번 달 통계 기반 적응형 가중치 적용
+      const thisRows = generateMonthSchedule(year, month);
+      const prevStats = calcMonthStats(year, month);
+      const nextRows = generateMonthSchedule(nextD.getFullYear(), nextD.getMonth(), prevStats);
+      const allRows = [...thisRows, ...nextRows];
       console.log('[schedule] generated', allRows.length, 'rows for 2 months');
 
       if (allRows.length > 0) {
@@ -2534,29 +2556,46 @@ function renderDomainChart() {
   if (!el) return;
 
   const monthStr = _calYear + '-' + String(_calMonth+1).padStart(2,'0');
-  const counts = {};
-  DOMAIN_GOALS.forEach(d => { counts[d.name] = 0; });
+  const done = {};    // 완료
+  const scheduled = {}; // 예정(완료 포함)
+  DOMAIN_GOALS.forEach(d => { done[d.name] = 0; scheduled[d.name] = 0; });
 
   Object.entries(_calPlan).forEach(([date, plan]) => {
     if (!date.startsWith(monthStr)) return;
-    if (plan.is_completed && plan.domain && counts[plan.domain] !== undefined) counts[plan.domain]++;
+    if (!plan.domain || done[plan.domain] === undefined) return;
+    scheduled[plan.domain]++;
+    if (plan.is_completed) done[plan.domain]++;
   });
 
+  // 이달 남은 영업일 계산 (진행 중인지 파악)
+  const today = new Date().toISOString().slice(0,10);
+  const isCurrentMonth = today.startsWith(monthStr);
+
   const maxGoal = 10;
-  let html = '<div class="domain-chart-title">📊 이달 영역별 수업 현황</div>';
+  let html = '<div class="domain-chart-title">이달 영역별 수업 현황</div>';
 
   DOMAIN_GOALS.forEach(d => {
-    const done = counts[d.name] || 0;
-    const isWeak = done < d.goal / 2;
-    const goalPct  = (d.goal / maxGoal * 100).toFixed(0);
-    const donePct  = done > 0 ? (done / maxGoal * 100).toFixed(0) : 0;
+    const doneN = done[d.name] || 0;
+    const schedN = scheduled[d.name] || 0;
+    // ⚠️: 완료 수업이 목표의 절반 미만이고 이달이 지났거나 예정도 부족한 경우
+    const isWeak = isCurrentMonth
+      ? (schedN < d.goal)                  // 현재 달: 예정 합계가 목표 미달
+      : (doneN < Math.ceil(d.goal / 2));   // 지난 달: 완료가 목표의 절반 미만
+    const goalPct = (d.goal / maxGoal * 100).toFixed(0);
+    const donePct = doneN > 0 ? Math.min(100, (doneN / maxGoal * 100)).toFixed(0) : 0;
+    const schedPct = schedN > 0 ? Math.min(100, (schedN / maxGoal * 100)).toFixed(0) : 0;
     html += '<div class="domain-bar-row">' +
-      '<div class="domain-bar-label' + (isWeak ? ' domain-weak' : '') + '">' + d.name + (isWeak ? ' ⚠️' : '') + '</div>' +
+      '<div class="domain-bar-label' + (isWeak ? ' domain-weak' : '') + '">' +
+        d.name + (isWeak ? ' ⚠️' : '') +
+      '</div>' +
       '<div class="domain-bar-track">' +
         '<div class="domain-bar-goal" style="width:' + goalPct + '%"></div>' +
+        '<div class="domain-bar-sched" style="width:' + schedPct + '%"></div>' +
         '<div class="domain-bar-done" style="width:' + donePct + '%"></div>' +
       '</div>' +
-      '<div class="domain-bar-count">' + done + '/' + d.goal + '</div>' +
+      '<div class="domain-bar-count">' + doneN + '/' + d.goal +
+        (isCurrentMonth && schedN !== doneN ? '<span class="domain-sched-hint">(예정 ' + schedN + ')</span>' : '') +
+      '</div>' +
     '</div>';
   });
 
@@ -2833,9 +2872,7 @@ function updateDiffSel(sel) {
   if (!_calPlan[_calSelDate]) _calPlan[_calSelDate] = {};
   if (!_calPlan[_calSelDate].senior_difficulties) _calPlan[_calSelDate].senior_difficulties = {};
   _calPlan[_calSelDate].senior_difficulties[sel.dataset.senior] = sel.value;
-  const allDiffs = getSeniorDiffs();
-  allDiffs[_calSelDate] = _calPlan[_calSelDate].senior_difficulties;
-  saveSeniorDiffs(allDiffs);
+  updateScheduleRow(_calSelDate, { senior_difficulties: _calPlan[_calSelDate].senior_difficulties });
   updatePrintSummary();
 }
 
@@ -2869,12 +2906,11 @@ async function printLesson() {
     const v = sel.value; if (v in counts) counts[v]++;
   });
   if (_calPlan[_calSelDate]) {
+    const now = new Date().toISOString();
     _calPlan[_calSelDate].senior_difficulties = diffs;
     _calPlan[_calSelDate].is_completed = true;
-    const allDiffs = getSeniorDiffs();
-    allDiffs[_calSelDate] = diffs;
-    saveSeniorDiffs(allDiffs);
-    updateScheduleRow(_calSelDate, {is_completed: true});
+    _calPlan[_calSelDate].completed_at = now;
+    updateScheduleRow(_calSelDate, { is_completed: true, completed_at: now, senior_difficulties: diffs });
     renderCalCells();
     renderDomainChart();
   }
