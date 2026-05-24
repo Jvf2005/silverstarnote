@@ -1196,6 +1196,13 @@ async function doLogin() {
 
 function doLogout() {
   clearSession();
+  // 달력 상태 초기화 (다음 로그인 시 새로 로드)
+  _calPlan = {};
+  _calSchedulesLoaded = new Set();
+  _calMatsLoaded = false;
+  _calMats = [];
+  _calCenterId = null;
+  _calCenterName = '';
   document.getElementById('login-email').value = '';
   document.getElementById('login-pw').value = '';
   document.getElementById('login-alert').classList.remove('visible');
@@ -2191,6 +2198,186 @@ var _calSelMat   = null; // 마지막으로 조회된 교재 (clickCalDate → o
 var _calCenterId = null;
 var _calCenterName = '';
 var _calMatsLoaded = false;
+var _calSchedulesLoaded = new Set(); // 'YYYY-M' keys already loaded from Supabase
+
+const DOMAIN_WEIGHTS = { 기억력:10, 집행기능:6, 지남력:5, 언어기능:4, 주의력:3, 시공간기능:2 };
+const DOMAIN_ORDER   = ['기억력','집행기능','지남력','언어기능','주의력','시공간기능'];
+
+// ── Senior difficulties → localStorage (schedules 테이블에 없는 컬럼) ─────────
+function getSeniorDiffs() {
+  try { return JSON.parse(localStorage.getItem('senior_diffs_' + (_calCenterId||'')) || '{}'); } catch(e) { return {}; }
+}
+function saveSeniorDiffs(diffs) {
+  if (_calCenterId) localStorage.setItem('senior_diffs_' + _calCenterId, JSON.stringify(diffs));
+}
+
+// ── Supabase schedules 단건 업데이트 ─────────────────────────────────────────
+async function updateScheduleRow(dateStr, updates) {
+  const plan = _calPlan[dateStr];
+  if (!plan) return;
+  try {
+    if (plan._id) {
+      const { error } = await sb.from('schedules').update(updates).eq('id', plan._id);
+      if (error) console.error('updateScheduleRow error:', error);
+    } else {
+      const { _id, senior_difficulties, ...dbRow } = plan;
+      const { data, error } = await sb.from('schedules')
+        .upsert({ center_id: _calCenterId, date: dateStr, ...dbRow, ...updates }, { onConflict: 'center_id,date' })
+        .select();
+      if (error) console.error('updateScheduleRow upsert error:', error);
+      else if (data?.[0] && _calPlan[dateStr]) _calPlan[dateStr]._id = data[0].id;
+    }
+  } catch(e) { console.error('updateScheduleRow exception:', e); }
+}
+
+// ── 월 working days 계산 (월~토, 일요일 제외) ────────────────────────────────
+function getWorkingDays(year, month) {
+  const days = [];
+  const total = new Date(year, month + 1, 0).getDate();
+  const startD = new Date(year, month, 1).getDay() === 0 ? 2 : 1;
+  for (let d = startD; d <= total; d++) {
+    if (new Date(year, month, d).getDay() === 0) continue;
+    days.push(year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0'));
+  }
+  return days;
+}
+
+// ── 교재 선택 (is_ready 우선, set_no 중복 최소화) ───────────────────────────
+function pickMat(candidates, usedSetNos) {
+  if (!candidates.length) return null;
+  const sh = [...candidates].sort(() => Math.random() - 0.5);
+  const used = m => m.set_no != null && usedSetNos.has(m.set_no);
+  return sh.find(m => m.is_ready !== false && !used(m))
+      || sh.find(m => m.is_ready !== false)
+      || sh.find(m => !used(m))
+      || sh[0];
+}
+
+// ── 도메인 시퀀스 생성 (연속 동일 도메인 금지) ──────────────────────────────
+function buildDomainSequence(slots) {
+  const pool = [];
+  DOMAIN_ORDER.forEach(d => { for (let i = 0; i < (slots[d]||0); i++) pool.push(d); });
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i+1)); [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  for (let i = 1; i < pool.length; i++) {
+    if (pool[i] === pool[i-1]) {
+      for (let j = i+1; j < pool.length; j++) {
+        if (pool[j] !== pool[i-1]) { [pool[i], pool[j]] = [pool[j], pool[i]]; break; }
+      }
+    }
+  }
+  return pool;
+}
+
+// ── 월간 스케줄 자동 생성 ────────────────────────────────────────────────────
+function generateMonthSchedule(year, month) {
+  const workDays = getWorkingDays(year, month);
+  if (!workDays.length || !_calMats.length) return [];
+
+  const byDomain = {};
+  DOMAIN_ORDER.forEach(d => { byDomain[d] = _calMats.filter(m => m.domain === d); });
+
+  const schedule = [];
+  const usedSetNos = new Set();
+
+  // 1일이 working day면 지남력 고정
+  let firstIsJinam = false;
+  if (workDays[0].endsWith('-01')) {
+    firstIsJinam = true;
+    const mat = pickMat(byDomain['지남력'], usedSetNos);
+    if (mat?.set_no != null) usedSetNos.add(mat.set_no);
+    schedule.push({
+      center_id: _calCenterId, date: workDays[0],
+      ssn: mat?.ssn||null, set_no: mat?.set_no||null, domain: '지남력',
+      type: mat?.type||null, topic: mat?.topic||null,
+      is_changed: false, is_completed: false,
+    });
+  }
+
+  const remainDays = firstIsJinam ? workDays.slice(1) : workDays;
+  const N = remainDays.length;
+  if (!N) return schedule;
+
+  // CIST 비율로 슬롯 계산 (Largest Remainder Method)
+  const totalW = 30;
+  const slots = {};
+  let assigned = 0;
+  DOMAIN_ORDER.forEach(d => { slots[d] = Math.floor(N * DOMAIN_WEIGHTS[d] / totalW); assigned += slots[d]; });
+  const rems = DOMAIN_ORDER.map(d => ({ d, r: (N * DOMAIN_WEIGHTS[d] / totalW) - slots[d] }))
+    .sort((a,b) => b.r - a.r);
+  let extra = N - assigned;
+  rems.forEach(({ d }) => { if (extra > 0) { slots[d]++; extra--; } });
+
+  const seq = buildDomainSequence(slots);
+
+  remainDays.forEach((dateStr, i) => {
+    const domain = seq[i] || '기억력';
+    const mat = pickMat(byDomain[domain], usedSetNos);
+    if (mat?.set_no != null) usedSetNos.add(mat.set_no);
+    schedule.push({
+      center_id: _calCenterId, date: dateStr,
+      ssn: mat?.ssn||null, set_no: mat?.set_no||null, domain,
+      type: mat?.type||null, topic: mat?.topic||null,
+      is_changed: false, is_completed: false,
+    });
+  });
+
+  return schedule;
+}
+
+// ── Supabase에서 월 스케줄 로드 → _calPlan에 반영 ───────────────────────────
+async function loadSchedulesForMonth(year, month) {
+  const m   = String(month+1).padStart(2,'0');
+  const end = year + '-' + m + '-' + new Date(year, month+1, 0).getDate();
+  const localDiffs = getSeniorDiffs();
+
+  const { data, error } = await sb.from('schedules').select('*')
+    .eq('center_id', _calCenterId)
+    .gte('date', year + '-' + m + '-01')
+    .lte('date', end);
+  if (error) throw error;
+
+  (data||[]).forEach(row => {
+    _calPlan[row.date] = {
+      _id: row.id,
+      ssn: row.ssn, set_no: row.set_no,
+      domain: row.domain, type: row.type, topic: row.topic,
+      is_completed: !!row.is_completed, is_changed: !!row.is_changed,
+      senior_difficulties: localDiffs[row.date] || {},
+    };
+  });
+  return (data||[]).length;
+}
+
+// ── 월 스케줄 보장 (없으면 2개월 자동생성) ──────────────────────────────────
+async function ensureSchedulesLoaded(year, month) {
+  const key = year + '-' + month;
+  if (_calSchedulesLoaded.has(key)) return;
+  _calSchedulesLoaded.add(key);
+
+  try {
+    const count = await loadSchedulesForMonth(year, month);
+    if (count === 0 && _calMats.length > 0) {
+      const nextD  = new Date(year, month + 1, 1);
+      const rows   = [
+        ...generateMonthSchedule(year, month),
+        ...generateMonthSchedule(nextD.getFullYear(), nextD.getMonth()),
+      ];
+      if (rows.length) {
+        const { error } = await sb.from('schedules')
+          .upsert(rows, { onConflict: 'center_id,date', ignoreDuplicates: true });
+        if (error) throw error;
+        await loadSchedulesForMonth(year, month);
+        const nk = nextD.getFullYear() + '-' + nextD.getMonth();
+        if (!_calSchedulesLoaded.has(nk)) {
+          _calSchedulesLoaded.add(nk);
+          await loadSchedulesForMonth(nextD.getFullYear(), nextD.getMonth());
+        }
+      }
+    }
+  } catch(e) { console.error('ensureSchedulesLoaded error:', e); }
+}
 
 function getLocalCareGrades() {
   try { return JSON.parse(localStorage.getItem('care_grades_' + (_calCenterId||'')) || '{}'); } catch(e) { return {}; }
@@ -2224,35 +2411,33 @@ async function showCalendar(paneId) {
     try { const c = await dbOne('centers',{center_id:_calCenterId}); _calCenterName = c ? c.name : ''; } catch(e) {}
   }
 
-  // Lesson plan from localStorage
-  try { _calPlan = JSON.parse(localStorage.getItem('lesson_plan_' + _calCenterId)) || {}; } catch(e) { _calPlan = {}; }
-
   // Seniors
   try { _calSeniors = await dbAll('seniors', {center_id:_calCenterId, is_active:true}); } catch(e) { _calSeniors = []; }
 
-  // Materials (lazy-load once)
+  // Materials: level='A' (세트당 1개) — 스케줄 생성 & 검색 공용
   if (!_calMatsLoaded) {
     try {
-      const mats = await dbAll('materials');
-      _calMats = mats.sort((a,b) => (a.priority||99) - (b.priority||99));
+      const { data, error } = await sb.from('materials').select('*').eq('level', 'A').order('set_no');
+      if (error) throw error;
+      _calMats = data || [];
       _calMatsLoaded = true;
     } catch(e) { console.error('materials load error:', e); }
   }
+
+  // schedules 테이블에서 이번 달 로드 (없으면 자동생성)
+  await ensureSchedulesLoaded(_calYear, _calMonth);
 
   renderCalHeader();
   renderCalCells();
   renderDomainChart();
 }
 
-function saveCalPlan() {
-  if (!_calCenterId) return;
-  localStorage.setItem('lesson_plan_' + _calCenterId, JSON.stringify(_calPlan));
-}
 
-function calNav(dir) {
+async function calNav(dir) {
   _calMonth += dir;
   if (_calMonth > 11) { _calMonth = 0; _calYear++; }
   if (_calMonth < 0)  { _calMonth = 11; _calYear--; }
+  await ensureSchedulesLoaded(_calYear, _calMonth);
   renderCalHeader();
   renderCalCells();
   renderDomainChart();
@@ -2435,7 +2620,7 @@ async function clickCalDate(dateStr) {
 function mpToggleComplete(checked) {
   if (!_calSelDate || !_calPlan[_calSelDate]) return;
   _calPlan[_calSelDate].is_completed = checked;
-  saveCalPlan();
+  updateScheduleRow(_calSelDate, {is_completed: checked});
   renderCalCells();
   renderDomainChart();
 }
@@ -2521,16 +2706,27 @@ function assignMaterial(ssn) {
   const isChange = !!(existing && existing.ssn && existing.ssn !== ssn);
 
   _calPlan[_calSelDate] = {
-    ssn: mat.ssn,
-    domain: mat.domain || '',
-    type:   mat.type   || '',
-    topic:  mat.topic  || '',
+    _id: existing?._id || null,
+    ssn: mat.ssn, set_no: mat.set_no || null,
+    domain: mat.domain || '', type: mat.type || '', topic: mat.topic || '',
     is_completed: existing ? !!existing.is_completed : false,
     is_changed:   isChange,
     senior_difficulties: existing ? (existing.senior_difficulties || {}) : {},
   };
 
-  saveCalPlan();
+  // Supabase upsert (non-blocking)
+  sb.from('schedules').upsert({
+    center_id: _calCenterId, date: _calSelDate,
+    ssn: mat.ssn, set_no: mat.set_no || null,
+    domain: mat.domain || '', type: mat.type || '', topic: mat.topic || '',
+    is_changed: isChange,
+    is_completed: existing ? !!existing.is_completed : false,
+  }, { onConflict: 'center_id,date' }).select()
+    .then(({ data, error }) => {
+      if (error) console.error('assignMaterial upsert error:', error);
+      else if (data?.[0] && _calPlan[_calSelDate]) _calPlan[_calSelDate]._id = data[0].id;
+    });
+
   renderCalCells();
   renderDomainChart();
 
@@ -2600,7 +2796,9 @@ function updateDiffSel(sel) {
   if (!_calPlan[_calSelDate]) _calPlan[_calSelDate] = {};
   if (!_calPlan[_calSelDate].senior_difficulties) _calPlan[_calSelDate].senior_difficulties = {};
   _calPlan[_calSelDate].senior_difficulties[sel.dataset.senior] = sel.value;
-  saveCalPlan();
+  const allDiffs = getSeniorDiffs();
+  allDiffs[_calSelDate] = _calPlan[_calSelDate].senior_difficulties;
+  saveSeniorDiffs(allDiffs);
   updatePrintSummary();
 }
 
@@ -2636,7 +2834,10 @@ async function printLesson() {
   if (_calPlan[_calSelDate]) {
     _calPlan[_calSelDate].senior_difficulties = diffs;
     _calPlan[_calSelDate].is_completed = true;
-    saveCalPlan();
+    const allDiffs = getSeniorDiffs();
+    allDiffs[_calSelDate] = diffs;
+    saveSeniorDiffs(allDiffs);
+    updateScheduleRow(_calSelDate, {is_completed: true});
     renderCalCells();
     renderDomainChart();
   }
