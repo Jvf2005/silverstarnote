@@ -606,6 +606,10 @@
               <span class="domain-icon">⚡</span>
               <span class="domain-label">전두엽/<br>집행 기능</span>
             </button>
+            <button type="button" class="domain-btn" data-value="지남력 (Orientation)" onclick="selectDomain(this)">
+              <span class="domain-icon">🧭</span>
+              <span class="domain-label">지남력</span>
+            </button>
           </div>
           <input type="hidden" id="rec-domain" value="주의집중력 (Attention)" />
         </div>
@@ -742,6 +746,10 @@
           <button type="button" class="domain-btn" data-value="전두엽/집행 기능 (Executive Function)" onclick="selectGuestDomain(this)">
             <span class="domain-icon">⚡</span>
             <span class="domain-label">전두엽/<br>집행 기능</span>
+          </button>
+          <button type="button" class="domain-btn" data-value="지남력 (Orientation)" onclick="selectGuestDomain(this)">
+            <span class="domain-icon">🧭</span>
+            <span class="domain-label">지남력</span>
           </button>
         </div>
         <input type="hidden" id="guest-domain" value="주의집중력 (Attention)" />
@@ -1438,6 +1446,7 @@ const SNSB_DOMAINS = [
   { key:'visuospatial', label:'시공간 구성 능력',   match:'시공간 구성' },
   { key:'memory',       label:'기억력',             match:'기억력' },
   { key:'executive',    label:'전두엽/집행 기능',   match:'전두엽' },
+  { key:'orientation',  label:'지남력',             match:'지남력' },
 ];
 
 function extractSnsbScores(recs) {
@@ -1452,11 +1461,11 @@ function extractSnsbScores(recs) {
 }
 
 function radarSVG(scores, small) {
-  const N = 5;
-  const cx = small ? 40 : 120, cy = small ? 40 : 130;
+  const N = 6;
+  const cx = small ? 40 : 120, cy = small ? 40 : 125;
   const maxR = small ? 30 : 85, labelR = 115;
   const sw = small ? 1 : 1.8;
-  const vb = small ? '0 0 80 80' : '-65 -20 360 295';
+  const vb = small ? '0 0 80 80' : '-65 -20 360 310';
   const szAttr = small ? 'width="80" height="80"' : 'style="width:100%;max-width:260px;"';
 
   function vtx(i, r) {
@@ -3052,7 +3061,7 @@ const _DOMAIN_MAP = {
   '시공간기능':  '시공간 구성 능력 (Visuospatial)',
   '기억력':    '기억력 (Memory)',
   '집행기능':   '전두엽/집행 기능 (Executive Function)',
-  '지남력':    '주의집중력 (Attention)',  // 가장 유사한 영역으로 매핑
+  '지남력':    '지남력 (Orientation)',
 };
 
 function prefillRecordForm(domain, type, topic, ssn) {
