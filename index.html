@@ -1124,10 +1124,18 @@ function hashPw(s) {
   return h.toString(16);
 }
 function showAlert(el, msg) { el.textContent = msg; el.classList.add('visible'); }
+// DB 저장은 UTC 유지, 화면 표시만 KST(Asia/Seoul, UTC+9) 변환
+const _KST_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }); // YYYY-MM-DD
+function todayKST() { return _KST_FMT.format(new Date()); }
+function toKSTparts(iso) {
+  if (!iso) return null;
+  const [y, m, d] = _KST_FMT.format(new Date(iso)).split('-');
+  return { y: +y, m: +m, d: +d };
+}
 function fmtDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + String(d.getDate()).padStart(2,'0');
+  const p = toKSTparts(iso);
+  if (!p) return '';
+  return p.y + '.' + String(p.m).padStart(2,'0') + '.' + String(p.d).padStart(2,'0');
 }
 function fmtBirth(iso) {
   if (!iso) return '';
@@ -1136,9 +1144,10 @@ function fmtBirth(iso) {
 }
 function calcAge(birth) {
   if (!birth) return '?';
-  const t = new Date(), b = new Date(birth);
-  let a = t.getFullYear() - b.getFullYear();
-  if (t.getMonth()-b.getMonth() < 0 || (t.getMonth()===b.getMonth() && t.getDate()<b.getDate())) a--;
+  const [ty, tm, td] = todayKST().split('-').map(Number);
+  const [by, bm, bd] = birth.split('-').map(Number);
+  let a = ty - by;
+  if (tm - bm < 0 || (tm === bm && td < bd)) a--;
   return a;
 }
 function setBtnLoading(id, on) {
@@ -1855,7 +1864,7 @@ function closeAchievement(e) {
 
 function printCertificate(seniorName, medal, constellations) {
   const medalName = getMedalName(medal);
-  const dateStr   = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+  const dateStr   = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Seoul'});
   const w = window.open('','_blank');
   w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>성장 수료증</title>'
     +'<style>body{font-family:serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f3f4f6}'
@@ -1888,7 +1897,7 @@ async function awardStars(senior, earned) {
   const newConst  = Math.floor(newStars / 5);
   const newMedal  = getMedal(newConst);
   const updates   = { total_stars: newStars, total_constellations: newConst, current_medal: newMedal };
-  if (!senior.season_start_date) updates.season_start_date = new Date().toISOString().slice(0,10);
+  if (!senior.season_start_date) updates.season_start_date = todayKST();
   try {
     await dbUpdate('seniors','senior_id',senior.senior_id, updates);
     if (_detailSenior && _detailSenior.senior_id === senior.senior_id) {
@@ -2501,7 +2510,7 @@ function renderCalCells() {
   const cellsEl = document.getElementById('cal-cells');
   if (!cellsEl) return;
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayKST();
   const year = _calYear, month = _calMonth;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -2568,7 +2577,7 @@ function renderDomainChart() {
   });
 
   // 이달 남은 영업일 계산 (진행 중인지 파악)
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayKST();
   const isCurrentMonth = today.startsWith(monthStr);
 
   const maxGoal = 10;
