@@ -17,7 +17,7 @@
     .section-title { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 14px; }
     .field { margin-bottom: 16px; }
     label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-    input[type=text], input[type=email], input[type=password], input[type=date], select, textarea {
+    input[type=text], input[type=email], input[type=password], input[type=date], input[type=number], select, textarea {
       width: 100%; padding: 11px 13px; border: 1px solid #d1d5db; border-radius: 8px;
       font-size: 14px; font-family: inherit; background: #fff; color: #111;
       outline: none; transition: border-color 0.15s, box-shadow 0.15s;
@@ -865,25 +865,27 @@
     </div>
     <div class="modal-body">
       <div id="sreg-alert" class="alert alert-error"></div>
-      <div class="field"><label>성함 <span style="color:#ef4444">*</span></label><input type="text" id="sreg-name" placeholder="어르신 성함" /></div>
       <div class="row">
-        <div class="field"><label>출생연도 <span style="color:#ef4444">*</span></label><input type="number" id="sreg-birth" min="1900" max="2010" placeholder="예: 1942" style="width:100%;" /></div>
+        <div class="field"><label>성함 <span style="color:#ef4444">*</span></label><input type="text" id="sreg-name" placeholder="어르신 성함" /></div>
+        <div class="field"><label>요양등급</label>
+          <select id="sreg-grade">
+            <option value="">선택 (선택사항)</option>
+            <option value="1">1등급</option>
+            <option value="2">2등급</option>
+            <option value="3">3등급</option>
+            <option value="4">4등급</option>
+            <option value="5">5등급</option>
+            <option value="인지지원">인지지원등급</option>
+          </select>
+          <div class="field-hint">1~2등급→A, 3~4등급→B, 5등급/인지지원→C</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>출생연도 <span style="color:#ef4444">*</span></label><input type="number" id="sreg-birth" min="1900" max="2010" placeholder="예: 1942" /></div>
         <div class="field">
           <label>성별 <span style="color:#ef4444">*</span></label>
           <select id="sreg-gender"><option value="">선택</option><option value="m">남성</option><option value="f">여성</option></select>
         </div>
-      </div>
-      <div class="field"><label>요양등급</label>
-        <select id="sreg-grade">
-          <option value="">선택 (선택사항)</option>
-          <option value="1">1등급</option>
-          <option value="2">2등급</option>
-          <option value="3">3등급</option>
-          <option value="4">4등급</option>
-          <option value="5">5등급</option>
-          <option value="인지지원">인지지원등급</option>
-        </select>
-        <div class="field-hint">난이도 권장: 1~2등급→A, 3~4등급→B, 5등급/인지지원→C</div>
       </div>
       <div class="field"><label>특이사항</label><textarea id="sreg-notes" style="height:70px;" placeholder="예: 고혈압 있음, 왼손잡이"></textarea></div>
       <button class="btn-primary" id="sreg-btn" onclick="submitSeniorReg()">등록하기</button>
@@ -2669,8 +2671,10 @@ async function clickCalDate(dateStr) {
   document.getElementById('mp-date').textContent = y + '년 ' + m + '월 ' + d + '일 (' + dayName + ')';
   document.getElementById('mp-why').textContent = '교재 불러오는 중…';
   document.getElementById('mp-not-ready').style.display = 'none';
-  // 과거 날짜: 버튼 숨김, 지난 수업 안내 표시
-  const isPast = dateStr < todayKST();
+  // 과거 날짜: 버튼 숨김 / 미래 날짜: 수업 완료 체크 불가
+  const _today  = todayKST();
+  const isPast   = dateStr < _today;
+  const isFuture = dateStr > _today;
   document.getElementById('mp-past-notice').style.display = isPast ? 'block' : 'none';
   document.getElementById('mp-btn-start').style.display  = isPast ? 'none' : '';
   document.getElementById('mp-btn-change').style.display = isPast ? 'none' : '';
@@ -2725,7 +2729,7 @@ async function clickCalDate(dateStr) {
     document.getElementById('mp-domain-badge').style.cssText = 'background:#dbeafe;color:#1e40af;';
     document.getElementById('mp-type-topic').textContent = (plan.type || '') + (plan.topic ? ' · ' + plan.topic : '');
     document.getElementById('mp-ssn').textContent = plan.ssn ? 'SSN: ' + plan.ssn : '';
-    document.getElementById('mp-completed-check').style.display = 'flex';
+    document.getElementById('mp-completed-check').style.display = isFuture ? 'none' : 'flex';
     document.getElementById('mp-completed-chk').checked = plan.is_completed || false;
     // SSN 있으면 SSN으로, 없으면 domain으로 Supabase 조회
     _calSelMat = await _loadMatDesc(plan.ssn ? null : plan.domain, plan.ssn || null);
