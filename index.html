@@ -2331,7 +2331,7 @@ function pickMatSerial(sorted, usedInCycle) {
   return sorted[0];
 }
 
-// ── 도메인 시퀀스 생성 (CIST 비율 고른 분산, 최소 2일 간격) ─────────────────
+// ── 도메인 시퀀스 생성 (CIST 비율 고른 분산, 최소 3일 간격) ─────────────────
 function buildDomainSequence(slots) {
   const N = DOMAIN_ORDER.reduce((s, d) => s + (slots[d] || 0), 0);
   if (!N) return [];
@@ -2344,22 +2344,22 @@ function buildDomainSequence(slots) {
   const sequence = [];
 
   for (let i = 0; i < N; i++) {
-    const hasLeft = d => placed[d] < (slots[d] || 0);
+    const rem    = d => (slots[d] || 0) - placed[d];
+    const remPos = N - i; // 남은 위치 수
 
-    // 1순위: 최소 2일 간격 만족
-    let eligible = domains.filter(d => hasLeft(d) && i - lastIdx[d] >= 2);
-    // 2순위: 연속 배치만 금지 (gap >= 1)
-    if (!eligible.length) eligible = domains.filter(d => hasLeft(d) && i - lastIdx[d] >= 1);
-    // 3순위: 제약 완전 해제 폴백
-    if (!eligible.length) eligible = domains.filter(d => hasLeft(d));
+    // 간격 제약 완화: 3일 → 2일 → 1일(연속 허용) 순으로 시도
+    let eligible = [];
+    for (const minGap of [3, 2, 1]) {
+      eligible = domains.filter(d => rem(d) > 0 && i - lastIdx[d] >= minGap);
+      if (eligible.length) break;
+    }
     if (!eligible.length) break;
 
-    // 결핍(deficit) 가장 큰 도메인 선택: 이상 배치 수 - 실제 배치 수
-    const best = eligible.reduce((a, b) => {
-      const da = (i + 1) * (slots[a] || 0) / N - placed[a];
-      const db = (i + 1) * (slots[b] || 0) / N - placed[b];
-      return da >= db ? a : b;
-    });
+    // 긴급도 = 남은 배정 횟수 / 남은 위치 수
+    // 값이 높을수록 미배정 비율이 높아 월말 집중 방지
+    const best = eligible.reduce((a, b) =>
+      rem(a) / remPos >= rem(b) / remPos ? a : b
+    );
 
     sequence.push(best);
     placed[best]++;
