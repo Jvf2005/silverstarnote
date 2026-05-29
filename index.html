@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>실버스타노트</title>
-  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans KR', sans-serif; background: #f3f4f6; min-height: 100vh; }
@@ -2966,9 +2965,8 @@ function updatePrintSummary() {
 async function printLesson() {
   if (!_calSelDate) return;
   const plan = _calPlan[_calSelDate] || {};
-  const mat  = _calSelMat; // clickCalDate에서 Supabase 조회 후 저장한 교재
+  const mat  = _calSelMat;
 
-  // Save difficulty assignments from DOM
   const selects = document.querySelectorAll('#ls-seniors-tbody .diff-select');
   const counts = {A:0, B:0, C:0};
   const diffs  = {};
@@ -2987,67 +2985,103 @@ async function printLesson() {
   }
 
   const p = _calSelDate.split('-');
-  const dateLabel  = p[0] + '년 ' + parseInt(p[1]) + '월 ' + parseInt(p[2]) + '일';
-  const watermark  = _calCenterName + ' · ' + dateLabel;
-  const domain     = (mat && mat.domain) || plan.domain || '';
-  const type       = (mat && mat.type)   || plan.type   || '';
-  const topic      = (mat && mat.topic)  || plan.topic  || '';
-  const ssn        = (mat && mat.ssn)    || plan.ssn    || '';
+  const dateLabel = p[0] + '년 ' + parseInt(p[1]) + '월 ' + parseInt(p[2]) + '일';
+  const watermark = _calCenterName + ' · ' + dateLabel;
+  const domain    = (mat && mat.domain) || plan.domain || '';
+  const type      = (mat && mat.type)   || plan.type   || '';
+  const topic     = (mat && mat.topic)  || plan.topic  || '';
+  const ssn       = (mat && mat.ssn)    || plan.ssn    || '';
 
-  // 인쇄 완료 시 관찰 기록 탭 수업공통정보 자동 입력
   prefillRecordForm(domain, type, topic, ssn);
-
   closeModal('modal-lesson-start');
 
-  const pdfUrl   = mat && mat.pdf_url   ? mat.pdf_url   : null;
-  const guideUrl = mat && mat.guide_url ? mat.guide_url : null;
+  const htmlUrl      = mat && mat.html_url       ? mat.html_url       : null;
+  const guideHtmlUrl = mat && mat.guide_html_url ? mat.guide_html_url : null;
 
-  if (!pdfUrl) {
-    alert('아직 준비 중인 교재입니다.\nPDF 교재가 등록되면 인쇄할 수 있습니다.');
+  if (!htmlUrl) {
+    alert('아직 준비 중인 교재입니다.\nHTML 교재가 등록되면 인쇄할 수 있습니다.');
     return;
   }
 
-  // 난이도별 PDF URL + 교사 가이드를 files 배열로 구성
-  const files = [];
-  ['A', 'B', 'C'].forEach(function(diff) {
-    if (counts[diff] > 0) {
-      const diffUrl = pdfUrl.replace(/(SSN-[A-Z])([ABC])/, '$1' + diff);
-      files.push({url: diffUrl, copies: counts[diff]});
-    }
-  });
-  if (files.length === 0) files.push({url: pdfUrl, copies: 1});
-  if (guideUrl) files.push({url: guideUrl, copies: 1});
-
-  // 로딩 토스트 표시
   const toast = document.createElement('div');
-  toast.textContent = 'PDF 병합 중...';
+  toast.textContent = '교재 불러오는 중...';
   toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#374151;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
   document.body.appendChild(toast);
 
   try {
-    const { PDFDocument } = PDFLib;
-    const merged = await PDFDocument.create();
+    // 난이도별 html_url 구성: 명시 필드(html_url_a/b/c) 우선, 없으면 URL 패턴 치환
+    const files = [];
+    ['A','B','C'].forEach(function(diff) {
+      if (counts[diff] > 0) {
+        const fieldKey = 'html_url_' + diff.toLowerCase();
+        const diffUrl = (mat && mat[fieldKey])
+          ? mat[fieldKey]
+          : htmlUrl.replace(/(SSN-[A-Z])([ABC])/, '$1' + diff);
+        files.push({ url: diffUrl, copies: counts[diff] });
+      }
+    });
+    if (files.length === 0) files.push({ url: htmlUrl, copies: 1 });
+    if (guideHtmlUrl) files.push({ url: guideHtmlUrl, copies: 1 });
+
+    // 각 HTML 파일 fetch → 스타일·본문 추출
+    const linkTags  = [];
+    const cssParts  = [];
+    const bodyParts = [];
 
     for (const { url, copies } of files) {
       if (!url || copies < 1) continue;
       const res = await fetch(url);
-      if (!res.ok) throw new Error('PDF 다운로드 실패: ' + url + ' (' + res.status + ')');
-      const bytes = await res.arrayBuffer();
-      const src = await PDFDocument.load(bytes);
-      const pageCount = src.getPageCount();
+      if (!res.ok) throw new Error('HTML 로드 실패: ' + url + ' (' + res.status + ')');
+      const html = await res.text();
+
+      // <link rel="stylesheet"> 수집
+      const linkRe = /<link[^>]+rel=["']stylesheet["'][^>]*>/gi;
+      let lm;
+      while ((lm = linkRe.exec(html)) !== null) {
+        if (!linkTags.includes(lm[0])) linkTags.push(lm[0]);
+      }
+
+      // <style> 수집
+      const styleRe = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+      let sm;
+      while ((sm = styleRe.exec(html)) !== null) cssParts.push(sm[1]);
+
+      // <body> 내용 추출
+      const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      const content = bodyMatch ? bodyMatch[1] : html;
       for (let i = 0; i < copies; i++) {
-        const indices = Array.from({length: pageCount}, (_, p) => p);
-        const copied = await merged.copyPages(src, indices);
-        copied.forEach(page => merged.addPage(page));
+        bodyParts.push('<div class="print-page">' + content + '</div>');
       }
     }
 
-    const mergedBytes = await merged.save();
-    const blob = new Blob([mergedBytes], {type: 'application/pdf'});
-    const blobUrl = URL.createObjectURL(blob);
-    window.open(blobUrl, '_blank');
+    const safeWm = watermark.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const combined =
+      '<!DOCTYPE html>\n<html lang="ko">\n<head>\n<meta charset="UTF-8"/>\n<title>교재 인쇄</title>\n'
+      + linkTags.join('\n') + '\n'
+      + '<style>\n'
+      + cssParts.join('\n') + '\n'
+      + 'body{margin:0;padding:0;}\n'
+      + '.print-page{page-break-after:always;position:relative;}\n'
+      + '.print-page:last-of-type{page-break-after:auto;}\n'
+      + '.wm-label{position:fixed;bottom:10px;right:14px;font-size:10px;color:#9ca3af;font-family:sans-serif;pointer-events:none;z-index:9999;}\n'
+      + '@media print{.wm-label{position:fixed;bottom:10px;right:14px;}}\n'
+      + '</style>\n</head>\n<body>\n'
+      + '<div class="wm-label">' + safeWm + '</div>\n'
+      + bodyParts.join('\n') + '\n'
+      + '<script>window.onload=function(){window.print();};<\/script>\n'
+      + '</body>\n</html>';
+
+    const win = window.open('', '_blank');
+    if (!win) {
+      alert('팝업이 차단되었습니다. 브라우저의 팝업 차단을 해제해주세요.');
+      return;
+    }
+    win.document.open();
+    win.document.write(combined);
+    win.document.close();
+
   } catch(e) {
-    alert('PDF 병합 중 오류가 발생했습니다.\n' + e.message);
+    alert('교재 불러오기 중 오류가 발생했습니다.\n' + e.message);
   } finally {
     document.body.removeChild(toast);
   }
