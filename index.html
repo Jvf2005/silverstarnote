@@ -1092,11 +1092,12 @@
         <strong>인지영역:</strong> <span id="ls-domain"></span><br>
         <strong>문제유형:</strong> <span id="ls-type"></span><br>
         <strong>활동주제:</strong> <span id="ls-topic"></span><br>
-        <strong>SSN:</strong> <span id="ls-ssn" style="font-family:monospace;font-size:12px;"></span>
+        <div style="margin-top:2px;"><strong>활동① SSN:</strong> <span id="ls-ssn1" style="font-family:monospace;font-size:12px;color:#1d4ed8;"></span></div>
+        <div><strong>활동② SSN:</strong> <span id="ls-ssn2" style="font-family:monospace;font-size:12px;color:#1d4ed8;"></span></div>
       </div>
       <div class="section-title" style="margin-bottom:10px;">어르신별 난이도 지정</div>
       <table class="senior-diff-table">
-        <thead><tr><th>어르신</th><th>요양등급</th><th>난이도</th></tr></thead>
+        <thead><tr><th>어르신</th><th>요양등급</th><th>난이도</th><th style="text-align:center;">출석</th></tr></thead>
         <tbody id="ls-seniors-tbody"></tbody>
       </table>
       <div class="print-summary" id="ls-print-summary"></div>
@@ -2278,6 +2279,7 @@ var _calMats     = []; // materials from Supabase
 var _calSeniors  = []; // active seniors
 var _calSelDate  = null;
 var _calSelMat   = null; // 마지막으로 조회된 교재 (clickCalDate → openLessonStart 공유)
+var _lsActivities = {}; // openLessonStart 에서 로드한 활동별 교재 { '1':{ssnA,ssnB,ssnC,pdfUrl,guideUrl}, '2':{...}, 'TG':{...} }
 var _calCenterId = null;
 var _calCenterName = '';
 var _calMatsLoaded = false;
@@ -3030,7 +3032,7 @@ function assignMaterial(ssn) {
     if (el('ls-domain')) el('ls-domain').textContent = mat.domain || '';
     if (el('ls-type'))   el('ls-type').textContent   = mat.type   || '';
     if (el('ls-topic'))  el('ls-topic').textContent  = mat.topic  || '';
-    if (el('ls-ssn'))    el('ls-ssn').textContent    = mat.ssn    || '';
+    if (el('ls-ssn1'))   el('ls-ssn1').textContent   = mat.ssn    || '';
   }
 
   closeModal('modal-mat-search');
@@ -3038,10 +3040,9 @@ function assignMaterial(ssn) {
 }
 
 // ── Lesson start ────────────────────────────────────────────────────────────────
-function openLessonStart() {
+async function openLessonStart() {
   if (!_calSelDate) return;
   const plan = _calPlan[_calSelDate] || {};
-  // _calSelMat: clickCalDate에서 Supabase 조회 후 저장한 교재 (캐시 의존 없음)
   const mat  = _calSelMat;
 
   const p = _calSelDate.split('-');
@@ -3049,32 +3050,72 @@ function openLessonStart() {
   const domain = (mat && mat.domain) || plan.domain || '';
   const type   = (mat && mat.type)   || plan.type   || '';
   const topic  = (mat && mat.topic)  || plan.topic  || '';
-  const ssn    = (mat && mat.ssn)    || '';
   document.getElementById('ls-domain').textContent = domain;
   document.getElementById('ls-type').textContent   = type;
   document.getElementById('ls-topic').textContent  = topic;
-  document.getElementById('ls-ssn').textContent    = ssn;
 
-  // 관찰 기록 작성 탭에 수업 공통정보 자동 입력
-  prefillRecordForm(domain, type, topic, ssn);
+  prefillRecordForm(domain, type, topic, (mat && mat.ssn) || '');
 
-  const grades  = getLocalCareGrades();
-  const saved   = plan.senior_difficulties || {};
-  const tbody   = document.getElementById('ls-seniors-tbody');
+  // 활동별 교재 로드 (SSN 표시 및 인쇄 URL 확보)
+  _lsActivities = {};
+  const realSetNo = (mat && mat.set_no != null) ? mat.set_no : (plan.set_no || null);
+  if (realSetNo) {
+    try {
+      const { data: actData } = await sb.from('materials').select('*').eq('set_no', realSetNo);
+      if (actData && actData.length) {
+        const byAct = {};
+        actData.forEach(r => {
+          const key = String(r.activity_no);
+          if (!byAct[key]) byAct[key] = [];
+          byAct[key].push(r);
+        });
+        Object.keys(byAct).forEach(key => {
+          const rows = byAct[key];
+          const first = rows[0];
+          let ssnA, ssnB, ssnC, pdfUrl, guideUrl;
+          if (first.code_a !== undefined) {
+            ssnA = first.code_a; ssnB = first.code_b; ssnC = first.code_c;
+            pdfUrl = first.pdf_url; guideUrl = first.guide_url;
+          } else {
+            const byLv = {};
+            rows.forEach(r => { byLv[r.level] = r; });
+            const lvA = byLv['A'] || rows[0];
+            ssnA = byLv['A'] ? byLv['A'].ssn : null;
+            ssnB = byLv['B'] ? byLv['B'].ssn : null;
+            ssnC = byLv['C'] ? byLv['C'].ssn : null;
+            pdfUrl = lvA.pdf_url; guideUrl = lvA.guide_url;
+          }
+          _lsActivities[key] = { ssnA, ssnB, ssnC, pdfUrl, guideUrl };
+        });
+      }
+    } catch(e) { console.warn('openLessonStart activities load error:', e); }
+  }
+
+  // 활동① ② SSN 표시
+  const act1 = _lsActivities['1'];
+  const act2 = _lsActivities['2'];
+  document.getElementById('ls-ssn1').textContent = (act1 && act1.ssnA) || (mat && mat.ssn) || '-';
+  document.getElementById('ls-ssn2').textContent = (act2 && act2.ssnA) || '-';
+
+  // 어르신 목록 (출석 체크박스 포함)
+  const grades = getLocalCareGrades();
+  const saved  = plan.senior_difficulties || {};
+  const tbody  = document.getElementById('ls-seniors-tbody');
 
   if (!_calSeniors.length) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#9ca3af;padding:16px;">등록된 어르신이 없습니다.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:16px;">등록된 어르신이 없습니다.</td></tr>';
   } else {
     tbody.innerHTML = _calSeniors.map(s => {
-      const g    = grades[s.senior_id] || '';
-      const rec  = recommendedDiff(g);
-      const cur  = saved[s.senior_id] || rec;
-      return '<tr>' +
+      const g   = grades[s.senior_id] || '';
+      const rec = recommendedDiff(g);
+      const cur = saved[s.senior_id] || rec;
+      return '<tr data-senior="' + s.senior_id + '">' +
         '<td><strong>' + s.name + '</strong></td>' +
         '<td style="font-size:12px;color:#6b7280;">' + gradeLabel(g) + (g ? ' → 권장' + rec : '') + '</td>' +
         '<td><select class="diff-select" data-senior="' + s.senior_id + '" onchange="updateDiffSel(this)">' +
           ['A','B','C'].map(v => '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+v+'등급</option>').join('') +
         '</select></td>' +
+        '<td style="text-align:center;"><input type="checkbox" class="att-check" checked onchange="updateAttCheck(this)" style="width:18px;height:18px;cursor:pointer;accent-color:#3b82f6;"></td>' +
       '</tr>';
     }).join('');
   }
@@ -3093,15 +3134,29 @@ function updateDiffSel(sel) {
   updatePrintSummary();
 }
 
-function updatePrintSummary() {
-  const selects = document.querySelectorAll('#ls-seniors-tbody .diff-select');
-  const counts = {A:0, B:0, C:0};
-  selects.forEach(sel => { const v = sel.value; if (v in counts) counts[v]++; });
+function updateAttCheck(cb) {
+  updatePrintSummary();
+}
 
+function updatePrintSummary() {
+  // 출석 체크된 어르신만 집계
+  const rows = document.querySelectorAll('#ls-seniors-tbody tr[data-senior]');
+  const counts = {A:0, B:0, C:0};
+  rows.forEach(row => {
+    const att = row.querySelector('.att-check');
+    const sel = row.querySelector('.diff-select');
+    if (att && att.checked && sel && sel.value in counts) counts[sel.value]++;
+  });
+
+  const hasAct2 = !!_lsActivities['2'];
   const lines = [];
-  if (counts.A) lines.push('A등급 × ' + counts.A + '부');
-  if (counts.B) lines.push('B등급 × ' + counts.B + '부');
-  if (counts.C) lines.push('C등급 × ' + counts.C + '부');
+  ['A', 'B', 'C'].forEach(lv => {
+    if (!counts[lv]) return;
+    const actLabel = hasAct2
+      ? ' (활동①' + lv + ' + 활동②' + lv + ')'
+      : ' (활동①' + lv + ')';
+    lines.push(lv + '등급 × ' + counts[lv] + '부' + actLabel);
+  });
   lines.push('교사 가이드 × 1부');
   const total = counts.A + counts.B + counts.C + 1;
   lines.push('총 인쇄: ' + total + '부');
@@ -3112,22 +3167,25 @@ function updatePrintSummary() {
 async function printLesson() {
   if (!_calSelDate) return;
   const plan = _calPlan[_calSelDate] || {};
-  const mat  = _calSelMat; // clickCalDate에서 Supabase 조회 후 저장한 교재
+  const mat  = _calSelMat;
 
-  // Save difficulty assignments from DOM
-  const selects = document.querySelectorAll('#ls-seniors-tbody .diff-select');
+  // 출석 어르신만 난이도 집계 (결석자는 인쇄 제외)
+  const rows = document.querySelectorAll('#ls-seniors-tbody tr[data-senior]');
   const counts = {A:0, B:0, C:0};
-  const diffs  = {};
-  selects.forEach(sel => {
-    diffs[sel.dataset.senior] = sel.value;
-    const v = sel.value; if (v in counts) counts[v]++;
+  const allDiffs = {};
+  rows.forEach(row => {
+    const sel = row.querySelector('.diff-select');
+    const att = row.querySelector('.att-check');
+    if (sel) allDiffs[row.dataset.senior] = sel.value;
+    if (att && att.checked && sel && sel.value in counts) counts[sel.value]++;
   });
+
   if (_calPlan[_calSelDate]) {
     const now = new Date().toISOString();
-    _calPlan[_calSelDate].senior_difficulties = diffs;
+    _calPlan[_calSelDate].senior_difficulties = allDiffs;
     _calPlan[_calSelDate].is_completed = true;
     _calPlan[_calSelDate].completed_at = now;
-    updateScheduleRow(_calSelDate, { is_completed: true, completed_at: now, senior_difficulties: diffs });
+    updateScheduleRow(_calSelDate, { is_completed: true, completed_at: now, senior_difficulties: allDiffs });
     renderCalCells();
     renderDomainChart();
   }
@@ -3140,29 +3198,40 @@ async function printLesson() {
   const topic      = (mat && mat.topic)  || plan.topic  || '';
   const ssn        = (mat && mat.ssn)    || '';
 
-  // 인쇄 완료 시 관찰 기록 탭 수업공통정보 자동 입력
   prefillRecordForm(domain, type, topic, ssn);
-
   closeModal('modal-lesson-start');
 
-  const pdfUrl   = mat && mat.pdf_url   ? mat.pdf_url   : null;
-  const guideUrl = mat && mat.guide_url ? mat.guide_url : null;
+  // 활동①/활동②/교사가이드 PDF URL (_lsActivities 우선, 없으면 _calSelMat 폴백)
+  const act1 = _lsActivities['1'];
+  const act2 = _lsActivities['2'];
+  const tg   = _lsActivities['TG'];
+  const pdfUrl1  = (act1 && act1.pdfUrl)  || (mat && mat.pdf_url)   || null;
+  const pdfUrl2  = (act2 && act2.pdfUrl)  || null;
+  const guideUrl = (tg  && (tg.guideUrl || tg.pdfUrl)) || (mat && mat.guide_url) || null;
 
-  if (!pdfUrl) {
+  if (!pdfUrl1 && !pdfUrl2) {
     alert('아직 준비 중인 교재입니다.\nPDF 교재가 등록되면 인쇄할 수 있습니다.');
     return;
   }
 
-  // 난이도별 PDF URL + 교사 가이드를 files 배열로 구성
+  // 난이도별 PDF URL 구성: 출석 어르신의 활동①+활동② 동시 인쇄
   const files = [];
-  ['A', 'B', 'C'].forEach(function(diff) {
-    if (counts[diff] > 0) {
-      const diffUrl = pdfUrl.replace(/(SSN-[A-Z]\d{2})([ABC])/, '$1' + diff);
-      files.push({url: diffUrl, copies: counts[diff]});
+  ['A', 'B', 'C'].forEach(diff => {
+    if (!counts[diff]) return;
+    if (pdfUrl1) {
+      const url1 = pdfUrl1.replace(/(SSN-[A-Z]\d{2})([ABC])/, '$1' + diff);
+      files.push({ url: url1, copies: counts[diff] });
+    }
+    if (pdfUrl2) {
+      const url2 = pdfUrl2.replace(/(SSN-[A-Z]\d{2})([ABC])/, '$1' + diff);
+      files.push({ url: url2, copies: counts[diff] });
     }
   });
-  if (files.length === 0) files.push({url: pdfUrl, copies: 1});
-  if (guideUrl) files.push({url: guideUrl, copies: 1});
+  if (files.length === 0) {
+    if (pdfUrl1) files.push({ url: pdfUrl1, copies: 1 });
+    if (pdfUrl2) files.push({ url: pdfUrl2, copies: 1 });
+  }
+  if (guideUrl) files.push({ url: guideUrl, copies: 1 });
 
   // 로딩 토스트 표시
   const toast = document.createElement('div');
