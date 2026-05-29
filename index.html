@@ -372,6 +372,22 @@
     .mat-preview-why   { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 14px; font-size:13px; color:#166534; line-height:1.7; margin:10px 0 14px; min-height:40px; }
     .mat-preview-not-ready { background:#fef3c7; border:1px solid #fcd34d; border-radius:8px; padding:10px 14px; font-size:13px; color:#92400e; margin-bottom:12px; }
 
+    /* ── SSN v9 코드 배지 ─────────────────────────────────────────────────── */
+    .ssn-badge { display:inline-block; font-family:monospace; font-size:11px; font-weight:700; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:1px 7px; letter-spacing:1px; }
+    .ssn-badge.lv-a { background:#f0fdf4; color:#15803d; border-color:#86efac; }
+    .ssn-badge.lv-b { background:#fefce8; color:#854d0e; border-color:#fde047; }
+    .ssn-badge.lv-c { background:#fef2f2; color:#b91c1c; border-color:#fca5a5; }
+    .ssn-badge.tg   { background:#f5f3ff; color:#6d28d9; border-color:#c4b5fd; }
+
+    /* ── Activity 상세 패널 ───────────────────────────────────────────────── */
+    .mp-act-panel { border-top:1px solid #f0f0f0; margin-top:12px; padding-top:12px; }
+    .mp-act-row { border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; margin-bottom:8px; }
+    .mp-act-row:last-child { margin-bottom:0; }
+    .mp-act-head { font-size:12px; font-weight:700; color:#374151; margin-bottom:4px; }
+    .mp-act-meta { font-size:11px; color:#6b7280; margin-bottom:6px; }
+    .mp-act-codes { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    .mp-act-lbl { font-size:10px; color:#9ca3af; font-weight:600; margin-right:1px; }
+
     /* ── Lesson start ─────────────────────────────────────────────────────── */
     .lesson-start-info { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:13px; line-height:2; color:#1e40af; }
     .senior-diff-table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:14px; }
@@ -1009,6 +1025,7 @@
       <div style="font-size:12px;color:#9ca3af;margin-bottom:2px;" id="mp-ssn"></div>
       <div class="mat-preview-why" id="mp-why"></div>
       <div class="mat-preview-not-ready" id="mp-not-ready" style="display:none;">⏳ 이 교재는 현재 준비 중입니다. 수업 전에 확인해주세요.</div>
+      <div id="mp-activity-detail"></div>
       <div id="mp-completed-check" style="display:none;align-items:center;gap:8px;margin-bottom:14px;">
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;">
           <input type="checkbox" id="mp-completed-chk" onchange="mpToggleComplete(this.checked)" style="width:16px;height:16px;accent-color:#16a34a;">
@@ -1074,11 +1091,12 @@
         <strong>인지영역:</strong> <span id="ls-domain"></span><br>
         <strong>문제유형:</strong> <span id="ls-type"></span><br>
         <strong>활동주제:</strong> <span id="ls-topic"></span><br>
-        <strong>SSN:</strong> <span id="ls-ssn" style="font-family:monospace;font-size:12px;"></span>
+        <div style="margin-top:2px;"><strong>활동① SSN:</strong> <span id="ls-ssn1" style="font-family:monospace;font-size:12px;color:#1d4ed8;"></span></div>
+        <div><strong>활동② SSN:</strong> <span id="ls-ssn2" style="font-family:monospace;font-size:12px;color:#1d4ed8;"></span></div>
       </div>
       <div class="section-title" style="margin-bottom:10px;">어르신별 난이도 지정</div>
       <table class="senior-diff-table">
-        <thead><tr><th>어르신</th><th>요양등급</th><th>난이도</th></tr></thead>
+        <thead><tr><th>어르신</th><th>요양등급</th><th>난이도</th><th style="text-align:center;">출석</th></tr></thead>
         <tbody id="ls-seniors-tbody"></tbody>
       </table>
       <div class="print-summary" id="ls-print-summary"></div>
@@ -1097,7 +1115,7 @@
 const { createClient } = supabase;
 const sb = createClient(
   'https://xgcslggptovavafnmhan.supabase.co',
-  'sb_publishable_lSuNZkwgTyI-IKEvoLaoQQ_caQDr2FN'
+  'sb_publishable_K9rOpmp_hcLulEkbLTD60g_dvLFHe00'
 );
 
 // ── DB HELPERS ───────────────────────────────────────────────────────────────
@@ -2260,6 +2278,7 @@ var _calMats     = []; // materials from Supabase
 var _calSeniors  = []; // active seniors
 var _calSelDate  = null;
 var _calSelMat   = null; // 마지막으로 조회된 교재 (clickCalDate → openLessonStart 공유)
+var _lsActivities = {}; // openLessonStart 에서 로드한 활동별 교재 { '1':{ssnA,ssnB,ssnC,pdfUrl,guideUrl}, '2':{...}, 'TG':{...} }
 var _calCenterId = null;
 var _calCenterName = '';
 var _calMatsLoaded = false;
@@ -2423,9 +2442,17 @@ async function loadSchedulesForMonth(year, month) {
   if (error) throw error;
 
   (data||[]).forEach(row => {
+    // schedules.ssn으로 _calMats에서 최신 set_no를 재조회
+    // (materials의 set_no가 변경되어 schedules 저장값과 불일치할 수 있음)
+    // materials는 v9 SSN, schedules는 v8 SSN 혼재 → v8→v9 변환 후 재시도
+    const freshMat = row.ssn
+      ? (_calMats.find(m => m.ssn === row.ssn) ||
+         _calMats.find(m => m.ssn === (ssnV8toV9(row.ssn) || '')))
+      : null;
     _calPlan[row.date] = {
       _id: row.id,
-      ssn: row.ssn, set_no: row.set_no,
+      ssn: row.ssn,
+      set_no: (freshMat && freshMat.set_no != null) ? freshMat.set_no : row.set_no,
       domain: row.domain, type: row.type, topic: row.topic,
       is_completed: !!row.is_completed, is_changed: !!row.is_changed,
       senior_difficulties: row.senior_difficulties || {},
@@ -2587,7 +2614,7 @@ function renderCalCells() {
     const isToday = dateStr === today;
     const isFirst = d === 1;
     const plan = _calPlan[dateStr];
-    const matInfo = (plan && plan.ssn) ? _calMats.find(m => m.ssn === plan.ssn) : null;
+    const matInfo = (plan && plan.set_no) ? _calMats.find(m => m.set_no === plan.set_no) : null;
 
     let cellCls = 'cal-cell' + (isToday ? ' today' : '');
     let content = '<div class="cal-date">' + d + '</div>';
@@ -2665,6 +2692,110 @@ function renderDomainChart() {
   el.innerHTML = html;
 }
 
+// ── SSN v9 코드 체계 ──────────────────────────────────────────────────────────
+// v9 형식: SSN-[영역][유형번호][난이도]-[시리얼]  예) SSN-M01A-01
+function parseSsnV9(code) {
+  const m = (code || '').toUpperCase().match(/^SSN-([A-Z])(\d{2})([A-Z])-(\d{2})$/);
+  if (!m) return null;
+  return { area: m[1], typeNum: m[2], level: m[3], serial: m[4] };
+}
+
+// v8 형식: SSN-[영역][난이도][유형번호]-[시리얼]  예) SSN-EA40-01
+function parseSsnV8(code) {
+  const m = (code || '').toUpperCase().match(/^SSN-([A-Z])([A-Z])(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return { area: m[1], level: m[2], typeNum: m[3], serial: m[4] };
+}
+
+// v8 코드를 v9 형식으로 변환 (schedules 구버전 데이터를 materials 조회에 사용)
+function ssnV8toV9(code) {
+  const p = parseSsnV8(code);
+  if (!p) return null;
+  return 'SSN-' + p.area + p.typeNum + p.level + '-' + p.serial;
+}
+
+function ssnBadge(code, lvlCls) {
+  if (!code) return '<span style="color:#d1d5db;font-size:11px;">-</span>';
+  const cls = 'ssn-badge' + (lvlCls ? ' ' + lvlCls : '');
+  return '<span class="' + cls + '">' + code + '</span>';
+}
+
+// ── materials activity 상세 조회 (v9 코드, set_no 기반) ──────────────────────
+async function loadMatActivities(setNo) {
+  const detailEl = document.getElementById('mp-activity-detail');
+  if (!detailEl || !setNo) { if (detailEl) detailEl.innerHTML = ''; return; }
+  detailEl.innerHTML = '<div class="mp-act-panel"><div style="font-size:12px;color:#9ca3af;text-align:center;padding:8px;">교재 상세 불러오는 중…</div></div>';
+
+  try {
+    const { data, error } = await sb.from('materials').select('*').eq('set_no', setNo);
+    if (error) throw error;
+    const rows = data || [];
+
+    if (!rows.length) { detailEl.innerHTML = ''; return; }
+
+    // activity_no별 그룹핑 (level별 분리 구조 지원)
+    const byAct = {};
+    rows.forEach(r => {
+      const key = String(r.activity_no);
+      if (!byAct[key]) byAct[key] = [];
+      byAct[key].push(r);
+    });
+
+    function codesForAct(actRows) {
+      // code_a/b/c 컬럼 방식 우선, 없으면 level+ssn 방식
+      const first = actRows[0];
+      if (first.code_a !== undefined) {
+        return { a: first.code_a, b: first.code_b, c: first.code_c, isReady: first.is_ready, domain: first.domain, topic: first.topic };
+      }
+      const byLv = {};
+      actRows.forEach(r => { byLv[r.level] = r; });
+      const rep = byLv['A'] || actRows[0];
+      return { a: byLv['A']?.ssn, b: byLv['B']?.ssn, c: byLv['C']?.ssn, isReady: rep.is_ready, domain: rep.domain, topic: rep.topic };
+    }
+
+    let html = '<div class="mp-act-panel">';
+
+    [['1','활동①'],['2','활동②']].forEach(([no, label]) => {
+      const actRows = byAct[no];
+      if (!actRows) return;
+      const { a, b, c, isReady, domain, topic } = codesForAct(actRows);
+      html += '<div class="mp-act-row">';
+      html += '<div class="mp-act-head">' + label + '</div>';
+      if (!isReady) {
+        html += '<div style="font-size:12px;color:#9ca3af;font-style:italic;">준비 중</div>';
+      } else {
+        if (domain || topic) html += '<div class="mp-act-meta">' + (domain || '') + (domain && topic ? ' · ' : '') + (topic || '') + '</div>';
+        html += '<div class="mp-act-codes">'
+          + '<span class="mp-act-lbl">A</span>' + ssnBadge(a, 'lv-a')
+          + '<span class="mp-act-lbl" style="margin-left:4px;">B</span>' + ssnBadge(b, 'lv-b')
+          + '<span class="mp-act-lbl" style="margin-left:4px;">C</span>' + ssnBadge(c, 'lv-c')
+          + '</div>';
+      }
+      html += '</div>';
+    });
+
+    const tgRows = byAct['TG'];
+    if (tgRows) {
+      const { a: tgCode, isReady } = codesForAct(tgRows);
+      html += '<div class="mp-act-row">';
+      html += '<div class="mp-act-head">교사 가이드</div>';
+      if (!isReady) {
+        html += '<div style="font-size:12px;color:#9ca3af;font-style:italic;">준비 중</div>';
+      } else {
+        html += '<div class="mp-act-codes">' + ssnBadge(tgCode || tgRows[0]?.ssn, 'tg') + '</div>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div>';
+    detailEl.innerHTML = html;
+
+  } catch(e) {
+    detailEl.innerHTML = '';
+    console.warn('loadMatActivities error:', e.message);
+  }
+}
+
 // ── Calendar date click ────────────────────────────────────────────────────────
 async function clickCalDate(dateStr) {
   _calSelDate = dateStr;
@@ -2689,10 +2820,10 @@ async function clickCalDate(dateStr) {
   openModal('modal-mat-preview');
 
   // ── 내부 헬퍼: Supabase에서 교재 1건 조회 후 미리보기 업데이트 ──────────────
-  async function _loadMatDesc(queryDomain, querySsn) {
+  async function _loadMatDesc(queryDomain, querySetNo) {
     try {
       let q = sb.from('materials').select('*');
-      if (querySsn)     q = q.eq('ssn', querySsn).limit(1);
+      if (querySetNo)       q = q.eq('set_no', querySetNo).order('activity_no').limit(1);
       else if (queryDomain) q = q.eq('domain', queryDomain).order('priority', { ascending: true }).limit(1);
       const { data, error } = await q;
       if (error) throw error;
@@ -2713,6 +2844,7 @@ async function clickCalDate(dateStr) {
   }
 
   _calSelMat = null; // 날짜 바뀔 때 초기화
+  document.getElementById('mp-activity-detail').innerHTML = '';
 
   if (d === 1 && !plan) {
     // 1일: 지남력 교재 Supabase 직접 조회
@@ -2724,6 +2856,7 @@ async function clickCalDate(dateStr) {
     if (mat) {
       document.getElementById('mp-type-topic').textContent = (mat.type || '') + (mat.topic ? ' · ' + mat.topic : '');
       document.getElementById('mp-ssn').textContent = mat.ssn ? 'SSN: ' + mat.ssn : '';
+      loadMatActivities(mat.set_no || null);
     } else {
       document.getElementById('mp-type-topic').textContent = '날짜·계절 오리엔테이션';
       document.getElementById('mp-ssn').textContent = '';
@@ -2736,11 +2869,26 @@ async function clickCalDate(dateStr) {
     document.getElementById('mp-domain-badge').textContent = plan.domain || '미지정';
     document.getElementById('mp-domain-badge').style.cssText = 'background:#dbeafe;color:#1e40af;';
     document.getElementById('mp-type-topic').textContent = (plan.type || '') + (plan.topic ? ' · ' + plan.topic : '');
-    document.getElementById('mp-ssn').textContent = plan.ssn ? 'SSN: ' + plan.ssn : '';
     document.getElementById('mp-completed-check').style.display = isFuture ? 'none' : 'flex';
     document.getElementById('mp-completed-chk').checked = plan.is_completed || false;
-    // SSN 있으면 SSN으로, 없으면 domain으로 Supabase 조회
-    _calSelMat = await _loadMatDesc(plan.ssn ? null : plan.domain, plan.ssn || null);
+    // set_no 있으면 set_no로, 없으면 domain으로 Supabase 조회
+    _calSelMat = await _loadMatDesc(plan.set_no ? null : plan.domain, plan.set_no || null);
+    // set_no 조회 실패 시 schedules의 ssn(v8)을 v9로 변환해 재시도 (구버전 set_no 대응)
+    if (!_calSelMat && plan.ssn) {
+      try {
+        const v9Ssn = ssnV8toV9(plan.ssn) || plan.ssn;
+        const { data: d2 } = await sb.from('materials').select('*').eq('ssn', v9Ssn).order('activity_no').limit(1);
+        if (d2 && d2[0]) {
+          _calSelMat = d2[0];
+          document.getElementById('mp-why').textContent = _calSelMat.description || '';
+          document.getElementById('mp-not-ready').style.display = 'none';
+        }
+      } catch(_) {}
+    }
+    // materials에서 얻은 set_no 우선 사용 (schedules 저장값이 outdated일 수 있음)
+    const realSetNo = (_calSelMat && _calSelMat.set_no != null) ? _calSelMat.set_no : (plan.set_no || null);
+    document.getElementById('mp-ssn').textContent = realSetNo ? '세트: ' + realSetNo : '';
+    loadMatActivities(realSetNo);
 
   } else {
     document.getElementById('mp-domain-badge').textContent = '미지정';
@@ -2883,7 +3031,7 @@ function assignMaterial(ssn) {
     if (el('ls-domain')) el('ls-domain').textContent = mat.domain || '';
     if (el('ls-type'))   el('ls-type').textContent   = mat.type   || '';
     if (el('ls-topic'))  el('ls-topic').textContent  = mat.topic  || '';
-    if (el('ls-ssn'))    el('ls-ssn').textContent    = mat.ssn    || '';
+    if (el('ls-ssn1'))   el('ls-ssn1').textContent   = mat.ssn    || '';
   }
 
   closeModal('modal-mat-search');
@@ -2891,10 +3039,9 @@ function assignMaterial(ssn) {
 }
 
 // ── Lesson start ────────────────────────────────────────────────────────────────
-function openLessonStart() {
+async function openLessonStart() {
   if (!_calSelDate) return;
   const plan = _calPlan[_calSelDate] || {};
-  // _calSelMat: clickCalDate에서 Supabase 조회 후 저장한 교재 (캐시 의존 없음)
   const mat  = _calSelMat;
 
   const p = _calSelDate.split('-');
@@ -2902,32 +3049,74 @@ function openLessonStart() {
   const domain = (mat && mat.domain) || plan.domain || '';
   const type   = (mat && mat.type)   || plan.type   || '';
   const topic  = (mat && mat.topic)  || plan.topic  || '';
-  const ssn    = (mat && mat.ssn)    || plan.ssn    || '';
   document.getElementById('ls-domain').textContent = domain;
   document.getElementById('ls-type').textContent   = type;
   document.getElementById('ls-topic').textContent  = topic;
-  document.getElementById('ls-ssn').textContent    = ssn;
 
-  // 관찰 기록 작성 탭에 수업 공통정보 자동 입력
-  prefillRecordForm(domain, type, topic, ssn);
+  prefillRecordForm(domain, type, topic, (mat && mat.ssn) || '');
 
-  const grades  = getLocalCareGrades();
-  const saved   = plan.senior_difficulties || {};
-  const tbody   = document.getElementById('ls-seniors-tbody');
+  // 활동별 교재 로드 (SSN 표시 및 인쇄 URL 확보)
+  _lsActivities = {};
+  const realSetNo = (mat && mat.set_no != null) ? mat.set_no : (plan.set_no || null);
+  if (realSetNo) {
+    try {
+      const { data: actData } = await sb.from('materials').select('*').eq('set_no', realSetNo);
+      if (actData && actData.length) {
+        const byAct = {};
+        actData.forEach(r => {
+          const key = String(r.activity_no);
+          if (!byAct[key]) byAct[key] = [];
+          byAct[key].push(r);
+        });
+        Object.keys(byAct).forEach(key => {
+          const rows = byAct[key];
+          const first = rows[0];
+          let ssnA, ssnB, ssnC, pdfUrl, guideUrl, htmlUrl, guideHtmlUrl;
+          if (first.code_a !== undefined) {
+            ssnA = first.code_a; ssnB = first.code_b; ssnC = first.code_c;
+            pdfUrl = first.pdf_url; guideUrl = first.guide_url;
+            htmlUrl = first.html_url; guideHtmlUrl = first.guide_html_url;
+          } else {
+            const byLv = {};
+            rows.forEach(r => { byLv[r.level] = r; });
+            const lvA = byLv['A'] || rows[0];
+            ssnA = byLv['A'] ? byLv['A'].ssn : null;
+            ssnB = byLv['B'] ? byLv['B'].ssn : null;
+            ssnC = byLv['C'] ? byLv['C'].ssn : null;
+            pdfUrl = lvA.pdf_url; guideUrl = lvA.guide_url;
+            htmlUrl = lvA.html_url; guideHtmlUrl = lvA.guide_html_url;
+          }
+          _lsActivities[key] = { ssnA, ssnB, ssnC, pdfUrl, guideUrl, htmlUrl, guideHtmlUrl };
+        });
+      }
+    } catch(e) { console.warn('openLessonStart activities load error:', e); }
+  }
+
+  // 활동① ② SSN 표시
+  const act1 = _lsActivities['1'];
+  const act2 = _lsActivities['2'];
+  document.getElementById('ls-ssn1').textContent = (act1 && act1.ssnA) || (mat && mat.ssn) || '-';
+  document.getElementById('ls-ssn2').textContent = (act2 && act2.ssnA) || '-';
+
+  // 어르신 목록 (출석 체크박스 포함)
+  const grades = getLocalCareGrades();
+  const saved  = plan.senior_difficulties || {};
+  const tbody  = document.getElementById('ls-seniors-tbody');
 
   if (!_calSeniors.length) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#9ca3af;padding:16px;">등록된 어르신이 없습니다.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:16px;">등록된 어르신이 없습니다.</td></tr>';
   } else {
     tbody.innerHTML = _calSeniors.map(s => {
-      const g    = grades[s.senior_id] || '';
-      const rec  = recommendedDiff(g);
-      const cur  = saved[s.senior_id] || rec;
-      return '<tr>' +
+      const g   = grades[s.senior_id] || '';
+      const rec = recommendedDiff(g);
+      const cur = saved[s.senior_id] || rec;
+      return '<tr data-senior="' + s.senior_id + '">' +
         '<td><strong>' + s.name + '</strong></td>' +
         '<td style="font-size:12px;color:#6b7280;">' + gradeLabel(g) + (g ? ' → 권장' + rec : '') + '</td>' +
         '<td><select class="diff-select" data-senior="' + s.senior_id + '" onchange="updateDiffSel(this)">' +
           ['A','B','C'].map(v => '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+v+'등급</option>').join('') +
         '</select></td>' +
+        '<td style="text-align:center;"><input type="checkbox" class="att-check" checked onchange="updateAttCheck(this)" style="width:18px;height:18px;cursor:pointer;accent-color:#3b82f6;"></td>' +
       '</tr>';
     }).join('');
   }
@@ -2946,15 +3135,29 @@ function updateDiffSel(sel) {
   updatePrintSummary();
 }
 
-function updatePrintSummary() {
-  const selects = document.querySelectorAll('#ls-seniors-tbody .diff-select');
-  const counts = {A:0, B:0, C:0};
-  selects.forEach(sel => { const v = sel.value; if (v in counts) counts[v]++; });
+function updateAttCheck(cb) {
+  updatePrintSummary();
+}
 
+function updatePrintSummary() {
+  // 출석 체크된 어르신만 집계
+  const rows = document.querySelectorAll('#ls-seniors-tbody tr[data-senior]');
+  const counts = {A:0, B:0, C:0};
+  rows.forEach(row => {
+    const att = row.querySelector('.att-check');
+    const sel = row.querySelector('.diff-select');
+    if (att && att.checked && sel && sel.value in counts) counts[sel.value]++;
+  });
+
+  const hasAct2 = !!_lsActivities['2'];
   const lines = [];
-  if (counts.A) lines.push('A등급 × ' + counts.A + '부');
-  if (counts.B) lines.push('B등급 × ' + counts.B + '부');
-  if (counts.C) lines.push('C등급 × ' + counts.C + '부');
+  ['A', 'B', 'C'].forEach(lv => {
+    if (!counts[lv]) return;
+    const actLabel = hasAct2
+      ? ' (활동①' + lv + ' + 활동②' + lv + ')'
+      : ' (활동①' + lv + ')';
+    lines.push(lv + '등급 × ' + counts[lv] + '부' + actLabel);
+  });
   lines.push('교사 가이드 × 1부');
   const total = counts.A + counts.B + counts.C + 1;
   lines.push('총 인쇄: ' + total + '부');
@@ -2967,41 +3170,69 @@ async function printLesson() {
   const plan = _calPlan[_calSelDate] || {};
   const mat  = _calSelMat;
 
-  const selects = document.querySelectorAll('#ls-seniors-tbody .diff-select');
+  // 출석 어르신만 난이도 집계 (결석자는 인쇄 제외)
+  const rows = document.querySelectorAll('#ls-seniors-tbody tr[data-senior]');
   const counts = {A:0, B:0, C:0};
-  const diffs  = {};
-  selects.forEach(sel => {
-    diffs[sel.dataset.senior] = sel.value;
-    const v = sel.value; if (v in counts) counts[v]++;
+  const allDiffs = {};
+  rows.forEach(row => {
+    const sel = row.querySelector('.diff-select');
+    const att = row.querySelector('.att-check');
+    if (sel) allDiffs[row.dataset.senior] = sel.value;
+    if (att && att.checked && sel && sel.value in counts) counts[sel.value]++;
   });
+
   if (_calPlan[_calSelDate]) {
     const now = new Date().toISOString();
-    _calPlan[_calSelDate].senior_difficulties = diffs;
+    _calPlan[_calSelDate].senior_difficulties = allDiffs;
     _calPlan[_calSelDate].is_completed = true;
     _calPlan[_calSelDate].completed_at = now;
-    updateScheduleRow(_calSelDate, { is_completed: true, completed_at: now, senior_difficulties: diffs });
+    updateScheduleRow(_calSelDate, { is_completed: true, completed_at: now, senior_difficulties: allDiffs });
     renderCalCells();
     renderDomainChart();
   }
 
   const p = _calSelDate.split('-');
-  const dateLabel = p[0] + '년 ' + parseInt(p[1]) + '월 ' + parseInt(p[2]) + '일';
-  const watermark = _calCenterName + ' · ' + dateLabel;
-  const domain    = (mat && mat.domain) || plan.domain || '';
-  const type      = (mat && mat.type)   || plan.type   || '';
-  const topic     = (mat && mat.topic)  || plan.topic  || '';
-  const ssn       = (mat && mat.ssn)    || plan.ssn    || '';
+  const dateLabel  = p[0] + '년 ' + parseInt(p[1]) + '월 ' + parseInt(p[2]) + '일';
+  const watermark  = _calCenterName + ' · ' + dateLabel;
+  const domain     = (mat && mat.domain) || plan.domain || '';
+  const type       = (mat && mat.type)   || plan.type   || '';
+  const topic      = (mat && mat.topic)  || plan.topic  || '';
+  const ssn        = (mat && mat.ssn)    || '';
 
   prefillRecordForm(domain, type, topic, ssn);
   closeModal('modal-lesson-start');
 
-  const htmlUrl      = mat && mat.html_url       ? mat.html_url       : null;
-  const guideHtmlUrl = mat && mat.guide_html_url ? mat.guide_html_url : null;
+  // 활동①/활동②/교사가이드 HTML URL (_lsActivities 우선, 없으면 _calSelMat 폴백)
+  const act1 = _lsActivities['1'];
+  const act2 = _lsActivities['2'];
+  const tg   = _lsActivities['TG'];
+  const htmlUrl1     = (act1 && act1.htmlUrl)      || (mat && mat.html_url)       || null;
+  const htmlUrl2     = (act2 && act2.htmlUrl)      || null;
+  const guideHtmlUrl = (tg  && (tg.guideHtmlUrl || tg.htmlUrl)) || (mat && mat.guide_html_url) || null;
 
-  if (!htmlUrl) {
+  if (!htmlUrl1 && !htmlUrl2) {
     alert('아직 준비 중인 교재입니다.\nHTML 교재가 등록되면 인쇄할 수 있습니다.');
     return;
   }
+
+  // 난이도별 HTML URL 구성: 출석 어르신의 활동①+활동② 동시 인쇄
+  const files = [];
+  ['A', 'B', 'C'].forEach(diff => {
+    if (!counts[diff]) return;
+    if (htmlUrl1) {
+      const url1 = htmlUrl1.replace(/(SSN-[A-Z]\d{2})([ABC])/, '$1' + diff);
+      files.push({ url: url1, copies: counts[diff] });
+    }
+    if (htmlUrl2) {
+      const url2 = htmlUrl2.replace(/(SSN-[A-Z]\d{2})([ABC])/, '$1' + diff);
+      files.push({ url: url2, copies: counts[diff] });
+    }
+  });
+  if (files.length === 0) {
+    if (htmlUrl1) files.push({ url: htmlUrl1, copies: 1 });
+    if (htmlUrl2) files.push({ url: htmlUrl2, copies: 1 });
+  }
+  if (guideHtmlUrl) files.push({ url: guideHtmlUrl, copies: 1 });
 
   const toast = document.createElement('div');
   toast.textContent = '교재 불러오는 중...';
@@ -3009,21 +3240,7 @@ async function printLesson() {
   document.body.appendChild(toast);
 
   try {
-    // 난이도별 html_url 구성: 명시 필드(html_url_a/b/c) 우선, 없으면 URL 패턴 치환
-    const files = [];
-    ['A','B','C'].forEach(function(diff) {
-      if (counts[diff] > 0) {
-        const fieldKey = 'html_url_' + diff.toLowerCase();
-        const diffUrl = (mat && mat[fieldKey])
-          ? mat[fieldKey]
-          : htmlUrl.replace(/(SSN-[A-Z])([ABC])/, '$1' + diff);
-        files.push({ url: diffUrl, copies: counts[diff] });
-      }
-    });
-    if (files.length === 0) files.push({ url: htmlUrl, copies: 1 });
-    if (guideHtmlUrl) files.push({ url: guideHtmlUrl, copies: 1 });
-
-    // 각 HTML 파일 fetch → 스타일·본문 추출
+    // 각 HTML 파일 fetch → 스타일·본문 추출 후 단일 페이지로 합치기
     const linkTags  = [];
     const cssParts  = [];
     const bodyParts = [];
@@ -3034,19 +3251,16 @@ async function printLesson() {
       if (!res.ok) throw new Error('HTML 로드 실패: ' + url + ' (' + res.status + ')');
       const html = await res.text();
 
-      // <link rel="stylesheet"> 수집
       const linkRe = /<link[^>]+rel=["']stylesheet["'][^>]*>/gi;
       let lm;
       while ((lm = linkRe.exec(html)) !== null) {
         if (!linkTags.includes(lm[0])) linkTags.push(lm[0]);
       }
 
-      // <style> 수집
       const styleRe = /<style[^>]*>([\s\S]*?)<\/style>/gi;
       let sm;
       while ((sm = styleRe.exec(html)) !== null) cssParts.push(sm[1]);
 
-      // <body> 내용 추출
       const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
       const content = bodyMatch ? bodyMatch[1] : html;
       for (let i = 0; i < copies; i++) {
@@ -3079,7 +3293,6 @@ async function printLesson() {
     win.document.open();
     win.document.write(combined);
     win.document.close();
-
   } catch(e) {
     alert('교재 불러오기 중 오류가 발생했습니다.\n' + e.message);
   } finally {
