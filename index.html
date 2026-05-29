@@ -373,6 +373,22 @@
     .mat-preview-why   { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 14px; font-size:13px; color:#166534; line-height:1.7; margin:10px 0 14px; min-height:40px; }
     .mat-preview-not-ready { background:#fef3c7; border:1px solid #fcd34d; border-radius:8px; padding:10px 14px; font-size:13px; color:#92400e; margin-bottom:12px; }
 
+    /* ── SSN v9 코드 배지 ─────────────────────────────────────────────────── */
+    .ssn-badge { display:inline-block; font-family:monospace; font-size:11px; font-weight:700; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:1px 7px; letter-spacing:1px; }
+    .ssn-badge.lv-a { background:#f0fdf4; color:#15803d; border-color:#86efac; }
+    .ssn-badge.lv-b { background:#fefce8; color:#854d0e; border-color:#fde047; }
+    .ssn-badge.lv-c { background:#fef2f2; color:#b91c1c; border-color:#fca5a5; }
+    .ssn-badge.tg   { background:#f5f3ff; color:#6d28d9; border-color:#c4b5fd; }
+
+    /* ── Activity 상세 패널 ───────────────────────────────────────────────── */
+    .mp-act-panel { border-top:1px solid #f0f0f0; margin-top:12px; padding-top:12px; }
+    .mp-act-row { border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; margin-bottom:8px; }
+    .mp-act-row:last-child { margin-bottom:0; }
+    .mp-act-head { font-size:12px; font-weight:700; color:#374151; margin-bottom:4px; }
+    .mp-act-meta { font-size:11px; color:#6b7280; margin-bottom:6px; }
+    .mp-act-codes { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    .mp-act-lbl { font-size:10px; color:#9ca3af; font-weight:600; margin-right:1px; }
+
     /* ── Lesson start ─────────────────────────────────────────────────────── */
     .lesson-start-info { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:13px; line-height:2; color:#1e40af; }
     .senior-diff-table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:14px; }
@@ -1010,6 +1026,7 @@
       <div style="font-size:12px;color:#9ca3af;margin-bottom:2px;" id="mp-ssn"></div>
       <div class="mat-preview-why" id="mp-why"></div>
       <div class="mat-preview-not-ready" id="mp-not-ready" style="display:none;">⏳ 이 교재는 현재 준비 중입니다. 수업 전에 확인해주세요.</div>
+      <div id="mp-activity-detail"></div>
       <div id="mp-completed-check" style="display:none;align-items:center;gap:8px;margin-bottom:14px;">
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;">
           <input type="checkbox" id="mp-completed-chk" onchange="mpToggleComplete(this.checked)" style="width:16px;height:16px;accent-color:#16a34a;">
@@ -2666,6 +2683,96 @@ function renderDomainChart() {
   el.innerHTML = html;
 }
 
+// ── SSN v9 코드 체계 ──────────────────────────────────────────────────────────
+// v9 형식: SSN-[영역][유형번호][난이도]-[시리얼]  예) SSN-M01A-01
+function parseSsnV9(code) {
+  const m = (code || '').toUpperCase().match(/^SSN-([A-Z])(\d{2})([A-Z])-(\d{2})$/);
+  if (!m) return null;
+  return { area: m[1], typeNum: m[2], level: m[3], serial: m[4] };
+}
+
+function ssnBadge(code, lvlCls) {
+  if (!code) return '<span style="color:#d1d5db;font-size:11px;">-</span>';
+  const cls = 'ssn-badge' + (lvlCls ? ' ' + lvlCls : '');
+  return '<span class="' + cls + '">' + code + '</span>';
+}
+
+// ── materials activity 상세 조회 (v9 코드, set_no 기반) ──────────────────────
+async function loadMatActivities(setNo) {
+  const detailEl = document.getElementById('mp-activity-detail');
+  if (!detailEl || !setNo) { if (detailEl) detailEl.innerHTML = ''; return; }
+  detailEl.innerHTML = '<div class="mp-act-panel"><div style="font-size:12px;color:#9ca3af;text-align:center;padding:8px;">교재 상세 불러오는 중…</div></div>';
+
+  try {
+    const { data, error } = await sb.from('materials').select('*').eq('set_no', setNo);
+    if (error) throw error;
+    const rows = data || [];
+
+    if (!rows.length) { detailEl.innerHTML = ''; return; }
+
+    // activity_no별 그룹핑 (level별 분리 구조 지원)
+    const byAct = {};
+    rows.forEach(r => {
+      const key = String(r.activity_no);
+      if (!byAct[key]) byAct[key] = [];
+      byAct[key].push(r);
+    });
+
+    function codesForAct(actRows) {
+      // code_a/b/c 컬럼 방식 우선, 없으면 level+ssn 방식
+      const first = actRows[0];
+      if (first.code_a !== undefined) {
+        return { a: first.code_a, b: first.code_b, c: first.code_c, isReady: first.is_ready, domain: first.domain, topic: first.topic };
+      }
+      const byLv = {};
+      actRows.forEach(r => { byLv[r.level] = r; });
+      const rep = byLv['A'] || actRows[0];
+      return { a: byLv['A']?.ssn, b: byLv['B']?.ssn, c: byLv['C']?.ssn, isReady: rep.is_ready, domain: rep.domain, topic: rep.topic };
+    }
+
+    let html = '<div class="mp-act-panel">';
+
+    [['1','활동①'],['2','활동②']].forEach(([no, label]) => {
+      const actRows = byAct[no];
+      if (!actRows) return;
+      const { a, b, c, isReady, domain, topic } = codesForAct(actRows);
+      html += '<div class="mp-act-row">';
+      html += '<div class="mp-act-head">' + label + '</div>';
+      if (!isReady) {
+        html += '<div style="font-size:12px;color:#9ca3af;font-style:italic;">준비 중</div>';
+      } else {
+        if (domain || topic) html += '<div class="mp-act-meta">' + (domain || '') + (domain && topic ? ' · ' : '') + (topic || '') + '</div>';
+        html += '<div class="mp-act-codes">'
+          + '<span class="mp-act-lbl">A</span>' + ssnBadge(a, 'lv-a')
+          + '<span class="mp-act-lbl" style="margin-left:4px;">B</span>' + ssnBadge(b, 'lv-b')
+          + '<span class="mp-act-lbl" style="margin-left:4px;">C</span>' + ssnBadge(c, 'lv-c')
+          + '</div>';
+      }
+      html += '</div>';
+    });
+
+    const tgRows = byAct['TG'];
+    if (tgRows) {
+      const { a: tgCode, isReady } = codesForAct(tgRows);
+      html += '<div class="mp-act-row">';
+      html += '<div class="mp-act-head">교사 가이드</div>';
+      if (!isReady) {
+        html += '<div style="font-size:12px;color:#9ca3af;font-style:italic;">준비 중</div>';
+      } else {
+        html += '<div class="mp-act-codes">' + ssnBadge(tgCode || tgRows[0]?.ssn, 'tg') + '</div>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div>';
+    detailEl.innerHTML = html;
+
+  } catch(e) {
+    detailEl.innerHTML = '';
+    console.warn('loadMatActivities error:', e.message);
+  }
+}
+
 // ── Calendar date click ────────────────────────────────────────────────────────
 async function clickCalDate(dateStr) {
   _calSelDate = dateStr;
@@ -2714,6 +2821,7 @@ async function clickCalDate(dateStr) {
   }
 
   _calSelMat = null; // 날짜 바뀔 때 초기화
+  document.getElementById('mp-activity-detail').innerHTML = '';
 
   if (d === 1 && !plan) {
     // 1일: 지남력 교재 Supabase 직접 조회
@@ -2725,6 +2833,7 @@ async function clickCalDate(dateStr) {
     if (mat) {
       document.getElementById('mp-type-topic').textContent = (mat.type || '') + (mat.topic ? ' · ' + mat.topic : '');
       document.getElementById('mp-ssn').textContent = mat.ssn ? 'SSN: ' + mat.ssn : '';
+      loadMatActivities(mat.set_no || null);
     } else {
       document.getElementById('mp-type-topic').textContent = '날짜·계절 오리엔테이션';
       document.getElementById('mp-ssn').textContent = '';
@@ -2742,6 +2851,9 @@ async function clickCalDate(dateStr) {
     document.getElementById('mp-completed-chk').checked = plan.is_completed || false;
     // SSN 있으면 SSN으로, 없으면 domain으로 Supabase 조회
     _calSelMat = await _loadMatDesc(plan.ssn ? null : plan.domain, plan.ssn || null);
+    // set_no 기반 activity 상세 표시 (v9)
+    const setNoForAct = plan.set_no || (_calSelMat && _calSelMat.set_no) || null;
+    loadMatActivities(setNoForAct);
 
   } else {
     document.getElementById('mp-domain-badge').textContent = '미지정';
@@ -3011,7 +3123,7 @@ async function printLesson() {
   const files = [];
   ['A', 'B', 'C'].forEach(function(diff) {
     if (counts[diff] > 0) {
-      const diffUrl = pdfUrl.replace(/(SSN-[A-Z])([ABC])/, '$1' + diff);
+      const diffUrl = pdfUrl.replace(/(SSN-[A-Z]\d{2})([ABC])/, '$1' + diff);
       files.push({url: diffUrl, copies: counts[diff]});
     }
   });
