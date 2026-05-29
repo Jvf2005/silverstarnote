@@ -2331,42 +2331,58 @@ function pickMatSerial(sorted, usedInCycle) {
   return sorted[0];
 }
 
-// ── 도메인 시퀀스 생성 (CIST 비율 고른 분산, 최소 3일 간격) ─────────────────
+// ── 도메인 시퀀스 생성 (인터리빙: 균등 간격 예약 → 충돌 해소) ───────────────
 function buildDomainSequence(slots) {
   const N = DOMAIN_ORDER.reduce((s, d) => s + (slots[d] || 0), 0);
   if (!N) return [];
-  const domains = DOMAIN_ORDER.filter(d => (slots[d] || 0) > 0);
 
-  const placed  = {};
-  const lastIdx = {};
-  domains.forEach(d => { placed[d] = 0; lastIdx[d] = -999; });
-
-  const sequence = [];
-
-  for (let i = 0; i < N; i++) {
-    const rem    = d => (slots[d] || 0) - placed[d];
-    const remPos = N - i; // 남은 위치 수
-
-    // 간격 제약 완화: 3일 → 2일 → 1일(연속 허용) 순으로 시도
-    let eligible = [];
-    for (const minGap of [3, 2, 1]) {
-      eligible = domains.filter(d => rem(d) > 0 && i - lastIdx[d] >= minGap);
-      if (eligible.length) break;
+  // Step 1: 각 배정마다 이상적 위치 계산 (수업일 전체에 균등 분산)
+  const placements = [];
+  DOMAIN_ORDER.forEach(domain => {
+    const count = slots[domain] || 0;
+    for (let k = 0; k < count; k++) {
+      // k번째 슬롯의 이상 위치: 구간 중앙값
+      placements.push({ ideal: Math.floor((k + 0.5) * N / count), domain, count });
     }
-    if (!eligible.length) break;
+  });
 
-    // 긴급도 = 남은 배정 횟수 / 남은 위치 수
-    // 값이 높을수록 미배정 비율이 높아 월말 집중 방지
-    const best = eligible.reduce((a, b) =>
-      rem(a) / remPos >= rem(b) / remPos ? a : b
-    );
+  // Step 2: 배정 횟수 많은 영역 먼저 (제약 강한 순), 같으면 이상 위치 순
+  placements.sort((a, b) => b.count - a.count || a.ideal - b.ideal);
 
-    sequence.push(best);
-    placed[best]++;
-    lastIdx[best] = i;
+  const assignment = new Array(N).fill(null);
+
+  // 연속 배치 금지: 앞·뒤 슬롯이 같은 도메인이 아닌 빈 위치인지 확인
+  const canPlace = (pos, domain) =>
+    pos >= 0 && pos < N &&
+    assignment[pos] === null &&
+    assignment[pos - 1] !== domain &&
+    assignment[pos + 1] !== domain;
+
+  // Step 3: 각 배정을 이상 위치 기준으로 좌우 탐색하며 배치
+  for (const { ideal, domain } of placements) {
+    let placed = false;
+
+    // 연속 금지 조건 유지하며 가장 가까운 빈 슬롯 탐색
+    for (let d = 0; d <= N && !placed; d++) {
+      for (const pos of (d === 0 ? [ideal] : [ideal - d, ideal + d])) {
+        if (canPlace(pos, domain)) {
+          assignment[pos] = domain; placed = true; break;
+        }
+      }
+    }
+    // 폴백: 연속 배치 허용하고 가장 가까운 빈 슬롯에 배치
+    if (!placed) {
+      for (let d = 0; d <= N && !placed; d++) {
+        for (const pos of (d === 0 ? [ideal] : [ideal - d, ideal + d])) {
+          if (pos >= 0 && pos < N && assignment[pos] === null) {
+            assignment[pos] = domain; placed = true; break;
+          }
+        }
+      }
+    }
   }
 
-  return sequence;
+  return assignment;
 }
 
 // ── 이전 달 완료 통계 → 부족 영역 보정 가중치 계산 ──────────────────────────
