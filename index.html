@@ -324,6 +324,7 @@
     .cal-month-label { font-size:18px; font-weight:700; color:#111; }
     .cal-nav-btn { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:6px 14px; font-size:14px; cursor:pointer; font-family:inherit; transition:background .15s; }
     .cal-nav-btn:hover { background:#f3f4f6; }
+    .cal-nav-btn:disabled { opacity:0.35; cursor:not-allowed; background:#fff; }
     .cal-day-header { padding:8px 4px; text-align:center; font-size:12px; font-weight:700; color:#6b7280; border-right:1px solid #e5e7eb; background:#f9fafb; }
     .cal-day-header:last-child { border-right:none; }
     .cal-cell { padding:5px 4px; min-height:76px; border-right:1px solid #f3f4f6; border-bottom:1px solid #f3f4f6; cursor:pointer; transition:background .12s; position:relative; background:#fff; overflow:hidden; }
@@ -989,9 +990,9 @@
 <!-- ════════════════════════ SHARED CALENDAR ═════════════════════════════════ -->
 <div id="cal-shared" style="display:none;">
   <div class="cal-header">
-    <button class="cal-nav-btn" onclick="calNav(-1)">‹ 이전달</button>
+    <button class="cal-nav-btn" id="cal-prev-btn" onclick="calNav(-1)">‹ 이전달</button>
     <span class="cal-month-label" id="cal-month-label"></span>
-    <button class="cal-nav-btn" onclick="calNav(1)">다음달 ›</button>
+    <button class="cal-nav-btn" id="cal-next-btn" onclick="calNav(1)">다음달 ›</button>
   </div>
   <div style="display:grid;grid-template-columns:repeat(6,1fr);border:1px solid #e5e7eb;border-radius:10px 10px 0 0;overflow:hidden;border-bottom:none;">
     <div class="cal-day-header">월</div>
@@ -2318,15 +2319,16 @@ function getWorkingDays(year, month) {
   return days;
 }
 
-// ── 교재 선택 (is_ready 우선, set_no 중복 최소화) ───────────────────────────
-function pickMat(candidates, usedSetNos) {
-  if (!candidates.length) return null;
-  const sh = [...candidates].sort(() => Math.random() - 0.5);
-  const used = m => m.set_no != null && usedSetNos.has(m.set_no);
-  return sh.find(m => m.is_ready !== false && !used(m))
-      || sh.find(m => m.is_ready !== false)
-      || sh.find(m => !used(m))
-      || sh[0];
+// ── 교재 선택 (is_ready=true 전용, 시리얼 순서 순환) ────────────────────────
+// usedInCycle: Set of used set_no values within current cycle
+function pickMatSerial(sorted, usedInCycle) {
+  if (!sorted.length) return null;
+  const unused = sorted.find(m => !usedInCycle.has(m.set_no));
+  if (unused) { usedInCycle.add(unused.set_no); return unused; }
+  // 모든 세트 사용 완료 → 사이클 리셋
+  usedInCycle.clear();
+  usedInCycle.add(sorted[0].set_no);
+  return sorted[0];
 }
 
 // ── 도메인 시퀀스 생성 (연속 동일 도메인 금지) ──────────────────────────────
@@ -2367,18 +2369,29 @@ function generateMonthSchedule(year, month, prevStats) {
   console.log('[schedule] generateMonthSchedule', year, month+1, '| workDays:', workDays.length, '| _calMats:', _calMats.length);
   if (!workDays.length || !_calMats.length) return [];
 
+  // is_ready=true 세트만, set_no 순 정렬
   const byDomain = {};
-  DOMAIN_ORDER.forEach(d => { byDomain[d] = _calMats.filter(m => m.domain === d); });
+  DOMAIN_ORDER.forEach(d => {
+    byDomain[d] = _calMats
+      .filter(m => m.domain === d && m.is_ready === true)
+      .sort((a, b) => (a.set_no || 0) - (b.set_no || 0));
+  });
+
+  // 도메인별 순환 사용 추적 (Set of used set_no)
+  const usedPerDomain = {};
+  DOMAIN_ORDER.forEach(d => { usedPerDomain[d] = new Set(); });
+
+  function pickNext(domain) {
+    return pickMatSerial(byDomain[domain] || [], usedPerDomain[domain] || new Set());
+  }
 
   const schedule = [];
-  const usedSetNos = new Set();
 
-  // 1일이 working day면 지남력 고정
+  // 매월 1일이 working day면 지남력 고정
   let firstIsJinam = false;
   if (workDays[0].endsWith('-01')) {
     firstIsJinam = true;
-    const mat = pickMat(byDomain['지남력'], usedSetNos);
-    if (mat?.set_no != null) usedSetNos.add(mat.set_no);
+    const mat = pickNext('지남력');
     schedule.push({
       center_id: _calCenterId, date: workDays[0],
       ssn: mat?.ssn||null, set_no: mat?.set_no||null, domain: '지남력',
@@ -2391,14 +2404,13 @@ function generateMonthSchedule(year, month, prevStats) {
   const N = remainDays.length;
   if (!N) return schedule;
 
-  // CIST 비율로 슬롯 계산 (Largest Remainder Method)
+  // CIST 배점 비율 기반 슬롯 계산 (Largest Remainder Method)
   // prevStats가 있으면 달성률 낮은 영역에 가중치 보정 (최대 50% 증가)
-  const totalW = 30;
   const adaptedW = {};
   DOMAIN_ORDER.forEach(d => {
     const base = DOMAIN_WEIGHTS[d];
     if (prevStats && prevStats.rate[d] !== undefined) {
-      const shortfall = Math.max(0, 1 - prevStats.rate[d]); // 0~1
+      const shortfall = Math.max(0, 1 - prevStats.rate[d]);
       adaptedW[d] = base * (1 + shortfall * 0.5);
     } else {
       adaptedW[d] = base;
@@ -2410,7 +2422,7 @@ function generateMonthSchedule(year, month, prevStats) {
   let assigned = 0;
   DOMAIN_ORDER.forEach(d => { slots[d] = Math.floor(N * adaptedW[d] / adaptedTotal); assigned += slots[d]; });
   const rems = DOMAIN_ORDER.map(d => ({ d, r: (N * adaptedW[d] / adaptedTotal) - slots[d] }))
-    .sort((a,b) => b.r - a.r);
+    .sort((a, b) => b.r - a.r);
   let extra = N - assigned;
   rems.forEach(({ d }) => { if (extra > 0) { slots[d]++; extra--; } });
 
@@ -2418,8 +2430,7 @@ function generateMonthSchedule(year, month, prevStats) {
 
   remainDays.forEach((dateStr, i) => {
     const domain = seq[i] || '기억력';
-    const mat = pickMat(byDomain[domain], usedSetNos);
-    if (mat?.set_no != null) usedSetNos.add(mat.set_no);
+    const mat = pickNext(domain);
     schedule.push({
       center_id: _calCenterId, date: dateStr,
       ssn: mat?.ssn||null, set_no: mat?.set_no||null, domain,
@@ -2572,10 +2583,25 @@ async function showCalendar(paneId) {
 }
 
 
+// ── 달력 이동 범위: 과거 6개월 / 미래 1개월 ────────────────────────────────
+function calNavBounds() {
+  const today = new Date();
+  const ty = today.getFullYear(), tm = today.getMonth();
+  let minY = ty, minM = tm - 6;
+  if (minM < 0) { minM += 12; minY--; }
+  let maxY = ty, maxM = tm + 1;
+  if (maxM > 11) { maxM = 0; maxY++; }
+  return { minY, minM, maxY, maxM };
+}
+
 async function calNav(dir) {
-  _calMonth += dir;
-  if (_calMonth > 11) { _calMonth = 0; _calYear++; }
-  if (_calMonth < 0)  { _calMonth = 11; _calYear--; }
+  const { minY, minM, maxY, maxM } = calNavBounds();
+  let ny = _calYear, nm = _calMonth + dir;
+  if (nm > 11) { nm = 0; ny++; }
+  if (nm < 0)  { nm = 11; ny--; }
+  if (ny < minY || (ny === minY && nm < minM)) return;
+  if (ny > maxY || (ny === maxY && nm > maxM)) return;
+  _calYear = ny; _calMonth = nm;
   await ensureSchedulesLoaded(_calYear, _calMonth);
   renderCalHeader();
   renderCalCells();
@@ -2585,6 +2611,20 @@ async function calNav(dir) {
 function renderCalHeader() {
   const el = document.getElementById('cal-month-label');
   if (el) el.textContent = _calYear + '년 ' + (_calMonth + 1) + '월';
+
+  const { minY, minM, maxY, maxM } = calNavBounds();
+  const prevBtn = document.getElementById('cal-prev-btn');
+  const nextBtn = document.getElementById('cal-next-btn');
+  if (prevBtn) {
+    let py = _calYear, pm = _calMonth - 1;
+    if (pm < 0) { pm = 11; py--; }
+    prevBtn.disabled = (py < minY || (py === minY && pm < minM));
+  }
+  if (nextBtn) {
+    let ny = _calYear, nm = _calMonth + 1;
+    if (nm > 11) { nm = 0; ny++; }
+    nextBtn.disabled = (ny > maxY || (ny === maxY && nm > maxM));
+  }
 }
 
 function renderCalCells() {
