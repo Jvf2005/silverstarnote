@@ -2441,9 +2441,13 @@ async function loadSchedulesForMonth(year, month) {
   if (error) throw error;
 
   (data||[]).forEach(row => {
+    // schedules.ssn으로 _calMats에서 최신 set_no를 재조회
+    // (materials의 set_no가 변경되어 schedules 저장값과 불일치할 수 있음)
+    const freshMat = row.ssn ? _calMats.find(m => m.ssn === row.ssn) : null;
     _calPlan[row.date] = {
       _id: row.id,
-      ssn: row.ssn, set_no: row.set_no,
+      ssn: row.ssn,
+      set_no: (freshMat && freshMat.set_no != null) ? freshMat.set_no : row.set_no,
       domain: row.domain, type: row.type, topic: row.topic,
       is_completed: !!row.is_completed, is_changed: !!row.is_changed,
       senior_difficulties: row.senior_difficulties || {},
@@ -2846,14 +2850,14 @@ async function clickCalDate(dateStr) {
     document.getElementById('mp-domain-badge').textContent = plan.domain || '미지정';
     document.getElementById('mp-domain-badge').style.cssText = 'background:#dbeafe;color:#1e40af;';
     document.getElementById('mp-type-topic').textContent = (plan.type || '') + (plan.topic ? ' · ' + plan.topic : '');
-    document.getElementById('mp-ssn').textContent = plan.set_no ? '세트: ' + plan.set_no : '';
     document.getElementById('mp-completed-check').style.display = isFuture ? 'none' : 'flex';
     document.getElementById('mp-completed-chk').checked = plan.is_completed || false;
     // set_no 있으면 set_no로, 없으면 domain으로 Supabase 조회
     _calSelMat = await _loadMatDesc(plan.set_no ? null : plan.domain, plan.set_no || null);
-    // set_no 기반 activity 상세 표시 (v9)
-    const setNoForAct = plan.set_no || (_calSelMat && _calSelMat.set_no) || null;
-    loadMatActivities(setNoForAct);
+    // materials에서 얻은 set_no 우선 사용 (schedules 저장값이 outdated일 수 있음)
+    const realSetNo = (_calSelMat && _calSelMat.set_no != null) ? _calSelMat.set_no : (plan.set_no || null);
+    document.getElementById('mp-ssn').textContent = realSetNo ? '세트: ' + realSetNo : '';
+    loadMatActivities(realSetNo);
 
   } else {
     document.getElementById('mp-domain-badge').textContent = '미지정';
