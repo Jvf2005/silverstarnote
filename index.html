@@ -2331,21 +2331,42 @@ function pickMatSerial(sorted, usedInCycle) {
   return sorted[0];
 }
 
-// ── 도메인 시퀀스 생성 (연속 동일 도메인 금지) ──────────────────────────────
+// ── 도메인 시퀀스 생성 (CIST 비율 고른 분산, 최소 2일 간격) ─────────────────
 function buildDomainSequence(slots) {
-  const pool = [];
-  DOMAIN_ORDER.forEach(d => { for (let i = 0; i < (slots[d]||0); i++) pool.push(d); });
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i+1)); [pool[i], pool[j]] = [pool[j], pool[i]];
+  const N = DOMAIN_ORDER.reduce((s, d) => s + (slots[d] || 0), 0);
+  if (!N) return [];
+  const domains = DOMAIN_ORDER.filter(d => (slots[d] || 0) > 0);
+
+  const placed  = {};
+  const lastIdx = {};
+  domains.forEach(d => { placed[d] = 0; lastIdx[d] = -999; });
+
+  const sequence = [];
+
+  for (let i = 0; i < N; i++) {
+    const hasLeft = d => placed[d] < (slots[d] || 0);
+
+    // 1순위: 최소 2일 간격 만족
+    let eligible = domains.filter(d => hasLeft(d) && i - lastIdx[d] >= 2);
+    // 2순위: 연속 배치만 금지 (gap >= 1)
+    if (!eligible.length) eligible = domains.filter(d => hasLeft(d) && i - lastIdx[d] >= 1);
+    // 3순위: 제약 완전 해제 폴백
+    if (!eligible.length) eligible = domains.filter(d => hasLeft(d));
+    if (!eligible.length) break;
+
+    // 결핍(deficit) 가장 큰 도메인 선택: 이상 배치 수 - 실제 배치 수
+    const best = eligible.reduce((a, b) => {
+      const da = (i + 1) * (slots[a] || 0) / N - placed[a];
+      const db = (i + 1) * (slots[b] || 0) / N - placed[b];
+      return da >= db ? a : b;
+    });
+
+    sequence.push(best);
+    placed[best]++;
+    lastIdx[best] = i;
   }
-  for (let i = 1; i < pool.length; i++) {
-    if (pool[i] === pool[i-1]) {
-      for (let j = i+1; j < pool.length; j++) {
-        if (pool[j] !== pool[i-1]) { [pool[i], pool[j]] = [pool[j], pool[i]]; break; }
-      }
-    }
-  }
-  return pool;
+
+  return sequence;
 }
 
 // ── 이전 달 완료 통계 → 부족 영역 보정 가중치 계산 ──────────────────────────
@@ -2387,20 +2408,17 @@ function generateMonthSchedule(year, month, prevStats) {
 
   const schedule = [];
 
-  // 매월 1일이 working day면 지남력 고정
-  let firstIsJinam = false;
-  if (workDays[0].endsWith('-01')) {
-    firstIsJinam = true;
-    const mat = pickNext('지남력');
-    schedule.push({
-      center_id: _calCenterId, date: workDays[0],
-      ssn: mat?.ssn||null, set_no: mat?.set_no||null, domain: '지남력',
-      type: mat?.type||null, topic: mat?.topic||null,
-      is_changed: false, is_completed: false,
-    });
-  }
+  // 매월 첫 수업일에 지남력 고정
+  // 1일이 월~토 → workDays[0] = 1일, 1일이 일요일 → workDays[0] = 2일
+  const jinamMat = pickNext('지남력');
+  schedule.push({
+    center_id: _calCenterId, date: workDays[0],
+    ssn: jinamMat?.ssn||null, set_no: jinamMat?.set_no||null, domain: '지남력',
+    type: jinamMat?.type||null, topic: jinamMat?.topic||null,
+    is_changed: false, is_completed: false,
+  });
 
-  const remainDays = firstIsJinam ? workDays.slice(1) : workDays;
+  const remainDays = workDays.slice(1);
   const N = remainDays.length;
   if (!N) return schedule;
 
