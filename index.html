@@ -2443,7 +2443,11 @@ async function loadSchedulesForMonth(year, month) {
   (data||[]).forEach(row => {
     // schedules.ssn으로 _calMats에서 최신 set_no를 재조회
     // (materials의 set_no가 변경되어 schedules 저장값과 불일치할 수 있음)
-    const freshMat = row.ssn ? _calMats.find(m => m.ssn === row.ssn) : null;
+    // materials는 v9 SSN, schedules는 v8 SSN 혼재 → v8→v9 변환 후 재시도
+    const freshMat = row.ssn
+      ? (_calMats.find(m => m.ssn === row.ssn) ||
+         _calMats.find(m => m.ssn === (ssnV8toV9(row.ssn) || '')))
+      : null;
     _calPlan[row.date] = {
       _id: row.id,
       ssn: row.ssn,
