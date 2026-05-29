@@ -3193,7 +3193,7 @@ async function printLesson() {
 
   const p = _calSelDate.split('-');
   const dateLabel  = p[0] + '년 ' + parseInt(p[1]) + '월 ' + parseInt(p[2]) + '일';
-  const watermark  = _calCenterName + ' · ' + dateLabel;
+  const watermark  = _calCenterName + ' | ' + dateLabel;
   const domain     = (mat && mat.domain) || plan.domain || '';
   const type       = (mat && mat.type)   || plan.type   || '';
   const topic      = (mat && mat.topic)  || plan.topic  || '';
@@ -3263,24 +3263,26 @@ async function printLesson() {
 
       const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
       const content = bodyMatch ? bodyMatch[1] : html;
+      const safeWm = watermark.replace(/</g,'&lt;').replace(/>/g,'&gt;');
       for (let i = 0; i < copies; i++) {
-        bodyParts.push('<div class="print-page">' + content + '</div>');
+        bodyParts.push(
+          '<div class="print-page">' + content +
+          '<div class="wm-label">' + safeWm + '</div>' +
+          '</div>'
+        );
       }
     }
 
-    const safeWm = watermark.replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const combined =
       '<!DOCTYPE html>\n<html lang="ko">\n<head>\n<meta charset="UTF-8"/>\n<title>교재 인쇄</title>\n'
       + linkTags.join('\n') + '\n'
       + '<style>\n'
       + cssParts.join('\n') + '\n'
       + 'body{margin:0;padding:0;}\n'
-      + '.print-page{page-break-after:always;position:relative;}\n'
+      + '.print-page{page-break-after:always;position:relative;min-height:100vh;}\n'
       + '.print-page:last-of-type{page-break-after:auto;}\n'
-      + '.wm-label{position:fixed;bottom:10px;right:14px;font-size:10px;color:#9ca3af;font-family:sans-serif;pointer-events:none;z-index:9999;}\n'
-      + '@media print{.wm-label{position:fixed;bottom:10px;right:14px;}}\n'
+      + '.wm-label{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:12px;color:#999;opacity:0.6;font-family:sans-serif;pointer-events:none;z-index:9999;}\n'
       + '</style>\n</head>\n<body>\n'
-      + '<div class="wm-label">' + safeWm + '</div>\n'
       + bodyParts.join('\n') + '\n'
       + '<script>window.onload=function(){window.print();};<\/script>\n'
       + '</body>\n</html>';
