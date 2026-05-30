@@ -2015,15 +2015,17 @@ function renderTrack2(senior, recs) {
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthLabel = now.getFullYear() + '년 ' + (now.getMonth() + 1) + '월';
 
-  const monthRecs     = recs.filter(r => r.stars && new Date(r.created_at) >= thisMonthStart);
-  const monthSprouts  = monthRecs.reduce((sum, r) => sum + (r.stars || 0), 0);
-  const sproutsInProg = monthSprouts % 5;
-  const sproutsToNext = sproutsInProg === 0 ? 5 : 5 - sproutsInProg;
-  const barPct        = sproutsInProg / 5 * 100;
-  const monthTrees    = Math.floor(monthSprouts / 5);
+  const monthRecs        = recs.filter(r => r.stars && new Date(r.created_at) >= thisMonthStart);
+  const monthSprouts     = monthRecs.reduce((sum, r) => sum + (r.stars || 0), 0);
+  const monthTotalTrees  = Math.floor(monthSprouts / 5);   // 이번 달 완성된 총 나무
+  const sproutsInProg    = monthSprouts % 5;               // 잔여새싹 (0~4)
+  const treesInProg      = monthTotalTrees % 5;            // 잔여나무 (0~4)
+  const sproutsToNext    = 5 - sproutsInProg;              // 다음 나무까지 필요 새싹
+  const treesToNextStar  = 5 - treesInProg;                // 다음 별까지 필요 나무
+  const barPct           = sproutsInProg / 5 * 100;
 
   const sproutsVisual = '🌱'.repeat(sproutsInProg) + '○'.repeat(5 - sproutsInProg);
-  const treesVisual   = '🌳'.repeat(Math.min(monthTrees, 15)) + (monthTrees > 15 ? '…' : '');
+  const treesVisual   = '🌳'.repeat(treesInProg)   + '○'.repeat(5 - treesInProg);
   const starDisplay   = totalStarCount > 0
     ? '⭐'.repeat(Math.min(totalStarCount, 10)) + (totalStarCount > 10 ? ' (' + totalStarCount + '개)' : '')
     : '<span style="color:#d1d5db;font-size:13px;">아직 없어요</span>';
@@ -2037,8 +2039,9 @@ function renderTrack2(senior, recs) {
     + '<div class="t2-bar-wrap"><div class="t2-bar" style="width:' + barPct + '%;background:linear-gradient(90deg,#22c55e,#86efac);"></div></div>'
     + '<div class="t2-hint">다음 나무까지 🌱 ' + sproutsToNext + '개 남아요</div></div>'
     + '<div class="t2-box"><div class="t2-label">🌳 이번 달 나무</div>'
-    + '<div style="font-size:22px;letter-spacing:3px;min-height:28px;">' + (treesVisual || '<span style="color:#d1d5db;font-size:13px;">아직 없어요</span>') + '</div>'
-    + '<div style="font-size:13px;color:#374151;font-weight:600;margin-top:6px;">' + monthTrees + '그루 완성</div></div>'
+    + '<div style="font-size:18px;letter-spacing:2px;margin-bottom:6px;">' + treesVisual + '</div>'
+    + '<div style="font-size:13px;color:#374151;font-weight:600;margin-top:6px;">' + treesInProg + '그루 진행 중 <span style="color:#9ca3af;font-weight:400;">(이번 달 완성 ' + monthTotalTrees + '그루)</span></div>'
+    + '<div class="t2-hint">다음 별까지 🌳 ' + treesToNextStar + '그루 남아요</div></div>'
     + '<div class="t2-box"><div class="t2-label">⭐ 누적 별</div>'
     + '<div style="font-size:22px;letter-spacing:3px;min-height:28px;">' + starDisplay + '</div>'
     + '<div style="font-size:13px;color:#374151;font-weight:600;margin-top:6px;">별 ' + totalStarCount + '개 · 나무 ' + totalTrees + '그루 누적</div>'
