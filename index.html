@@ -602,32 +602,32 @@
         <div class="field">
           <label>인지 영역</label>
           <div class="domain-grid">
-            <button type="button" class="domain-btn active" data-value="주의집중력 (Attention)" onclick="selectDomain(this)">
-              <span class="domain-icon">🎯</span>
-              <span class="domain-label">주의<br>집중력</span>
-            </button>
-            <button type="button" class="domain-btn" data-value="언어 및 관련 기능 (Language)" onclick="selectDomain(this)">
-              <span class="domain-icon">💬</span>
-              <span class="domain-label">언어 및<br>관련 기능</span>
-            </button>
-            <button type="button" class="domain-btn" data-value="시공간 구성 능력 (Visuospatial)" onclick="selectDomain(this)">
-              <span class="domain-icon">🧩</span>
-              <span class="domain-label">시공간<br>구성 능력</span>
-            </button>
-            <button type="button" class="domain-btn" data-value="기억력 (Memory)" onclick="selectDomain(this)">
+            <button type="button" class="domain-btn active" data-value="기억력 (Memory)" onclick="selectDomain(this)">
               <span class="domain-icon">🧠</span>
               <span class="domain-label">기억력</span>
             </button>
-            <button type="button" class="domain-btn" data-value="전두엽/집행 기능 (Executive Function)" onclick="selectDomain(this)">
+            <button type="button" class="domain-btn" data-value="집행기능 (Executive Function)" onclick="selectDomain(this)">
               <span class="domain-icon">⚡</span>
-              <span class="domain-label">전두엽/<br>집행 기능</span>
+              <span class="domain-label">집행기능</span>
             </button>
             <button type="button" class="domain-btn" data-value="지남력 (Orientation)" onclick="selectDomain(this)">
               <span class="domain-icon">🧭</span>
               <span class="domain-label">지남력</span>
             </button>
+            <button type="button" class="domain-btn" data-value="언어기능 (Language)" onclick="selectDomain(this)">
+              <span class="domain-icon">💬</span>
+              <span class="domain-label">언어기능</span>
+            </button>
+            <button type="button" class="domain-btn" data-value="주의력 (Attention)" onclick="selectDomain(this)">
+              <span class="domain-icon">🎯</span>
+              <span class="domain-label">주의력</span>
+            </button>
+            <button type="button" class="domain-btn" data-value="시공간기능 (Visuospatial)" onclick="selectDomain(this)">
+              <span class="domain-icon">🧩</span>
+              <span class="domain-label">시공간기능</span>
+            </button>
           </div>
-          <input type="hidden" id="rec-domain" value="주의집중력 (Attention)" />
+          <input type="hidden" id="rec-domain" value="기억력 (Memory)" />
         </div>
         <div class="row">
           <div class="field">
@@ -743,32 +743,32 @@
       <div class="field">
         <label>인지 영역</label>
         <div class="domain-grid">
-          <button type="button" class="domain-btn active" data-value="주의집중력 (Attention)" onclick="selectGuestDomain(this)">
-            <span class="domain-icon">🎯</span>
-            <span class="domain-label">주의<br>집중력</span>
-          </button>
-          <button type="button" class="domain-btn" data-value="언어 및 관련 기능 (Language)" onclick="selectGuestDomain(this)">
-            <span class="domain-icon">💬</span>
-            <span class="domain-label">언어 및<br>관련 기능</span>
-          </button>
-          <button type="button" class="domain-btn" data-value="시공간 구성 능력 (Visuospatial)" onclick="selectGuestDomain(this)">
-            <span class="domain-icon">🧩</span>
-            <span class="domain-label">시공간<br>구성 능력</span>
-          </button>
-          <button type="button" class="domain-btn" data-value="기억력 (Memory)" onclick="selectGuestDomain(this)">
+          <button type="button" class="domain-btn active" data-value="기억력 (Memory)" onclick="selectGuestDomain(this)">
             <span class="domain-icon">🧠</span>
             <span class="domain-label">기억력</span>
           </button>
-          <button type="button" class="domain-btn" data-value="전두엽/집행 기능 (Executive Function)" onclick="selectGuestDomain(this)">
+          <button type="button" class="domain-btn" data-value="집행기능 (Executive Function)" onclick="selectGuestDomain(this)">
             <span class="domain-icon">⚡</span>
-            <span class="domain-label">전두엽/<br>집행 기능</span>
+            <span class="domain-label">집행기능</span>
           </button>
           <button type="button" class="domain-btn" data-value="지남력 (Orientation)" onclick="selectGuestDomain(this)">
             <span class="domain-icon">🧭</span>
             <span class="domain-label">지남력</span>
           </button>
+          <button type="button" class="domain-btn" data-value="언어기능 (Language)" onclick="selectGuestDomain(this)">
+            <span class="domain-icon">💬</span>
+            <span class="domain-label">언어기능</span>
+          </button>
+          <button type="button" class="domain-btn" data-value="주의력 (Attention)" onclick="selectGuestDomain(this)">
+            <span class="domain-icon">🎯</span>
+            <span class="domain-label">주의력</span>
+          </button>
+          <button type="button" class="domain-btn" data-value="시공간기능 (Visuospatial)" onclick="selectGuestDomain(this)">
+            <span class="domain-icon">🧩</span>
+            <span class="domain-label">시공간기능</span>
+          </button>
         </div>
-        <input type="hidden" id="guest-domain" value="주의집중력 (Attention)" />
+        <input type="hidden" id="guest-domain" value="기억력 (Memory)" />
       </div>
       <div class="row">
         <div class="field">
@@ -1056,12 +1056,12 @@
       <div class="mat-search-row">
         <select id="ms-domain-sel" class="mat-search-select" onchange="renderMatSearchResults()">
           <option value="">인지영역 전체</option>
-          <option value="주의력">주의력</option>
-          <option value="언어기능">언어기능</option>
-          <option value="시공간기능">시공간기능</option>
           <option value="기억력">기억력</option>
           <option value="집행기능">집행기능</option>
           <option value="지남력">지남력</option>
+          <option value="언어기능">언어기능</option>
+          <option value="주의력">주의력</option>
+          <option value="시공간기능">시공간기능</option>
         </select>
         <select id="ms-type-sel" class="mat-search-select" onchange="renderMatSearchResults()">
           <option value="">문제유형 전체</option>
@@ -1459,12 +1459,12 @@ function copyInviteCode() {
 
 // ── SNSB RADAR CHART ─────────────────────────────────────────────────────────
 const SNSB_DOMAINS = [
-  { key:'attention',    label:'주의집중력',        match:'주의집중력' },
-  { key:'language',     label:'언어 및 관련 기능',  match:'언어 및 관련 기능' },
-  { key:'visuospatial', label:'시공간 구성 능력',   match:'시공간 구성' },
-  { key:'memory',       label:'기억력',             match:'기억력' },
-  { key:'executive',    label:'전두엽/집행 기능',   match:'전두엽' },
-  { key:'orientation',  label:'지남력',             match:'지남력' },
+  { key:'memory',       label:'기억력',    match:'기억력' },
+  { key:'executive',    label:'집행기능',  match:'집행' },
+  { key:'orientation',  label:'지남력',    match:'지남력' },
+  { key:'language',     label:'언어기능',  match:'언어' },
+  { key:'attention',    label:'주의력',    match:'주의' },
+  { key:'visuospatial', label:'시공간기능', match:'시공간' },
 ];
 
 function extractSnsbScores(recs) {
@@ -3417,11 +3417,11 @@ async function printLesson() {
 // ── PREFILL RECORD FORM FROM CALENDAR ────────────────────────────────────────
 // materials 테이블 domain → 관찰 기록 domain-btn data-value 매핑
 const _DOMAIN_MAP = {
-  '주의력':    '주의집중력 (Attention)',
-  '언어기능':   '언어 및 관련 기능 (Language)',
-  '시공간기능':  '시공간 구성 능력 (Visuospatial)',
+  '주의력':    '주의력 (Attention)',
+  '언어기능':   '언어기능 (Language)',
+  '시공간기능':  '시공간기능 (Visuospatial)',
   '기억력':    '기억력 (Memory)',
-  '집행기능':   '전두엽/집행 기능 (Executive Function)',
+  '집행기능':   '집행기능 (Executive Function)',
   '지남력':    '지남력 (Orientation)',
 };
 
