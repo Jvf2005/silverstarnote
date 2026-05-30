@@ -2032,19 +2032,24 @@ function renderTrack2(senior, recs) {
 
   const histHtml = buildMonthHistory(recs, now);
 
+  const n = 'font-size:26px;font-weight:700;line-height:1;margin-bottom:8px;';
+  const starEmoji = totalStarCount > 0
+    ? '⭐'.repeat(Math.min(totalStarCount, 10)) + (totalStarCount > 10 ? '…' : '')
+    : '<span style="color:#d1d5db;font-size:13px;">아직 없어요</span>';
+
   return '<div class="track2-panel">'
-    + '<div class="t2-box"><div class="t2-label">🌱 ' + monthLabel + ' 새싹 현황</div>'
-    + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;"><span class="t2-stars-big" style="color:#22c55e;">' + sproutsInProg + '</span><span class="t2-sub">개 진행 중</span></div>'
-    + '<div style="font-size:18px;letter-spacing:2px;margin-bottom:6px;">' + sproutsVisual + '</div>'
-    + '<div class="t2-bar-wrap"><div class="t2-bar" style="width:' + barPct + '%;background:linear-gradient(90deg,#22c55e,#86efac);"></div></div>'
+    + '<div class="t2-box"><div class="t2-label">🌱 ' + monthLabel + ' 새싹</div>'
+    + '<div style="' + n + 'color:#22c55e;">' + sproutsInProg + '<span style="font-size:16px;color:#374151;font-weight:600;"> 개 진행 중</span></div>'
+    + '<div style="font-size:18px;letter-spacing:2px;">' + sproutsVisual + '</div>'
     + '</div>'
     + '<div class="t2-box"><div class="t2-label">🌳 이번 달 나무</div>'
-    + '<div style="font-size:18px;letter-spacing:2px;margin-bottom:6px;">' + treesVisual + '</div>'
-    + '<div style="font-size:13px;color:#374151;font-weight:600;margin-top:6px;">' + treesInProg + '그루 진행 중</div>'
+    + '<div style="' + n + 'color:#15803d;">' + treesInProg + '<span style="font-size:16px;color:#374151;font-weight:600;"> 그루 진행 중</span></div>'
+    + '<div style="font-size:18px;letter-spacing:2px;">' + treesVisual + '</div>'
     + '</div>'
     + '<div class="t2-box"><div class="t2-label">⭐ 누적 별</div>'
-    + '<div style="font-size:22px;letter-spacing:3px;min-height:28px;">' + starDisplay + '</div>'
-    + '<div style="font-size:13px;color:#374151;font-weight:600;margin-top:6px;">' + nextMedalHint(totalTrees) + '</div></div>'
+    + '<div style="' + n + 'color:#f59e0b;">' + totalStarCount + '<span style="font-size:16px;color:#374151;font-weight:600;"> 개 달성 중</span></div>'
+    + '<div style="font-size:18px;letter-spacing:2px;">' + starEmoji + '</div>'
+    + '</div>'
     + histHtml + '</div>';
 }
 
