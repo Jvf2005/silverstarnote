@@ -2135,6 +2135,7 @@ function generateRecord() {
   document.getElementById('rec-result-box').classList.add('visible');
   document.getElementById('rec-saved').classList.remove('visible');
   document.getElementById('rec-copy-ok').classList.remove('visible');
+  document.getElementById('save-rec-btn').scrollIntoView({ behavior:'smooth', block:'center' });
 }
 
 async function saveRecord() {
