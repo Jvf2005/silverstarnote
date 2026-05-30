@@ -273,13 +273,13 @@
     .t2-season-stats { font-size:12px; color:#6b7280; }
 
     /* Star preview box in record form */
-    .star-preview-box { display:none; background:linear-gradient(135deg,#fffbeb,#fef3c7); border:1.5px solid #fcd34d; border-radius:10px; padding:10px 14px; margin-top:10px; align-items:center; gap:10px; }
+    .star-preview-box { display:none; background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1.5px solid #86efac; border-radius:10px; padding:10px 14px; margin-top:10px; align-items:center; gap:10px; }
     .star-preview-box.visible { display:flex; }
-    .star-preview-stars { font-size:19px; letter-spacing:1px; color:#f59e0b; }
-    .star-preview-text  { font-size:13px; color:#92400e; font-weight:500; }
+    .star-preview-stars { font-size:19px; letter-spacing:1px; color:#22c55e; }
+    .star-preview-text  { font-size:13px; color:#166534; font-weight:500; }
 
-    /* Flying star animation */
-    .flying-star { position:fixed; font-size:22px; color:#f59e0b; pointer-events:none; z-index:9999; animation:flyUp .9s ease-out forwards; }
+    /* Flying sprout animation */
+    .flying-star { position:fixed; font-size:22px; color:#22c55e; pointer-events:none; z-index:9999; animation:flyUp .9s ease-out forwards; }
     @keyframes flyUp {
       0%   { opacity:1; transform:translate(0,0) scale(1) rotate(0deg); }
       60%  { opacity:1; transform:translate(var(--dx,8px),-65px) scale(1.4) rotate(18deg); }
@@ -1829,21 +1829,19 @@ function initHelpLevel() {
 
 // ── TRACK 2: STAR SYSTEM ─────────────────────────────────────────────────────
 function getMedal(n) {
-  if (n >= 200) return '👑';
-  if (n >= 100) return '🥇';
-  if (n >= 50)  return '🥈';
-  if (n >= 20)  return '🥉';
-  return '';
+  // n = 나무(🌳) 수 → ⭐ 별 개수 반환
+  return Math.floor(n / 5);
 }
 function getMedalName(m) {
-  return {'👑':'왕관','🥇':'금메달','🥈':'은메달','🥉':'동메달','':'없음'}[m]||'없음';
+  if (!m || m <= 0) return '없음';
+  return '⭐ ' + m + '개';
 }
 function nextMedalHint(n) {
-  if (n >= 200) return '👑 최고 등급 달성!';
-  if (n >= 100) return '👑 왕관까지 '+(200-n)+'개 남음';
-  if (n >= 50)  return '🥇 금메달까지 '+(100-n)+'개 남음';
-  if (n >= 20)  return '🥈 은메달까지 '+(50-n)+'개 남음';
-  return '🥉 동메달까지 '+(20-n)+'개 남음';
+  // n = 나무 수
+  const toNext = 5 - (n % 5 === 0 ? 5 : n % 5);
+  const currentStars = getMedal(n);
+  if (n % 5 === 0 && currentStars > 0) return '⭐ ' + currentStars + '개 달성 중!';
+  return '⭐ 다음 별까지 🌳 ' + toNext + '그루 남음';
 }
 
 function calcSessionStars() {
@@ -1859,7 +1857,7 @@ function onSdcChange(type) {
   updateScore();
   const cb = document.getElementById('sdc-' + type);
   if (cb.checked) {
-    const msgs   = { autonomy:'스스로 결정하셨어요! ★', persistence:'포기하지 않으셨어요! ★★', relation:'따뜻한 마음을 나누셨어요! ★' };
+    const msgs   = { autonomy:'스스로 결정하셨어요! 🌱', persistence:'포기하지 않으셨어요! 🌱🌱', relation:'따뜻한 마음을 나누셨어요! 🌱' };
     const counts = { autonomy:1, persistence:2, relation:1 };
     showPraiseToast(msgs[type], cb);
     flyStarAnimation(cb, counts[type]);
@@ -1874,8 +1872,8 @@ function updateStarPreview() {
   const textEl  = document.getElementById('star-preview-text');
   if (!box) return;
   box.classList.add('visible');
-  starsEl.textContent = '★'.repeat(stars);
-  textEl.textContent  = '저장 시 ' + stars + '개의 별을 획득해요!';
+  starsEl.textContent = '🌱'.repeat(stars);
+  textEl.textContent  = '저장 시 새싹 ' + stars + '개를 획득해요!';
 }
 
 function flyStarAnimation(fromEl, count) {
@@ -1887,7 +1885,7 @@ function flyStarAnimation(fromEl, count) {
       el.className = 'flying-star';
       const dx = (Math.random() - 0.5) * 60;
       el.style.cssText = 'left:'+cx+'px;top:'+cy+'px;--dx:'+dx+'px;';
-      el.textContent = '★';
+      el.textContent = '🌱';
       document.body.appendChild(el);
       setTimeout(() => el.remove(), 950);
     }, i * 160);
@@ -1935,16 +1933,15 @@ function closeAchievement(e) {
     document.getElementById('ach-overlay').classList.remove('open');
 }
 
-function printCertificate(seniorName, medal, constellations) {
-  const medalName = getMedalName(medal);
-  const dateStr   = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Seoul'});
+function printCertificate(seniorName, stars, trees) {
+  const dateStr = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Seoul'});
   const w = window.open('','_blank');
   w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>성장 수료증</title>'
-    +'<style>body{font-family:serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f3f4f6}'
-    +'.cert{background:#fff;width:540px;padding:60px 50px;border:6px double #2563eb;border-radius:4px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.12)}'
+    +'<style>body{font-family:serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f0fdf4}'
+    +'.cert{background:#fff;width:540px;padding:60px 50px;border:6px double #22c55e;border-radius:4px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.12)}'
     +'.t{font-size:12px;letter-spacing:4px;color:#6b7280;margin-bottom:6px}'
-    +'.main{font-size:30px;font-weight:700;color:#1d4ed8;letter-spacing:6px;margin:10px 0}'
-    +'.medal{font-size:64px;margin:14px 0}'
+    +'.main{font-size:30px;font-weight:700;color:#15803d;letter-spacing:6px;margin:10px 0}'
+    +'.icon{font-size:64px;margin:14px 0}'
     +'.name{font-size:26px;font-weight:700;border-bottom:2px solid #111;display:inline-block;padding-bottom:3px;margin:14px 0 6px}'
     +'.body{font-size:14px;color:#374151;line-height:2;margin:12px 0}'
     +'.date{font-size:12px;color:#9ca3af;margin-top:20px}'
@@ -1953,9 +1950,9 @@ function printCertificate(seniorName, medal, constellations) {
     +'</style></head><body><div class="cert">'
     +'<div class="t">성장 수료증 · CERTIFICATE OF ACHIEVEMENT</div>'
     +'<div class="main">실버스타노트</div>'
-    +'<div class="medal">'+medal+'</div>'
+    +'<div class="icon">⭐</div>'
     +'<div class="name">'+seniorName+' 어르신</div>'
-    +'<div class="body">위 어르신은 실버스타노트 인지 훈련 프로그램에<br>꾸준히 참여하시어 별자리 <strong>'+constellations+'개</strong>를 획득하고<br><strong>'+medalName+'</strong>를 달성하셨습니다.</div>'
+    +'<div class="body">위 어르신은 실버스타노트 인지 훈련 프로그램에<br>꾸준히 참여하시어 나무 <strong>'+trees+'그루</strong>를 키우고<br><strong>⭐ 별 '+stars+'개</strong>를 달성하셨습니다.</div>'
     +'<div class="date">'+dateStr+'</div>'
     +'<div class="org">🌟 실버스타노트</div>'
     +'</div><script>setTimeout(()=>window.print(),500);<\/script></body></html>');
@@ -1963,32 +1960,32 @@ function printCertificate(seniorName, medal, constellations) {
 }
 
 async function awardStars(senior, earned) {
-  const prevStars = senior.total_stars || 0;
-  const prevConst = senior.total_constellations || 0;
-  const prevMedal = getMedal(prevConst);
-  const newStars  = prevStars + earned;
-  const newConst  = Math.floor(newStars / 5);
-  const newMedal  = getMedal(newConst);
-  const updates   = { total_stars: newStars, total_constellations: newConst, current_medal: newMedal };
+  const prevSprouts   = senior.total_stars || 0;
+  const prevTrees     = senior.total_constellations || 0;
+  const prevStarCount = getMedal(prevTrees);
+  const newSprouts    = prevSprouts + earned;
+  const newTrees      = Math.floor(newSprouts / 5);
+  const newStarCount  = getMedal(newTrees);
+  const updates = { total_stars: newSprouts, total_constellations: newTrees, current_medal: newStarCount };
   if (!senior.season_start_date) updates.season_start_date = todayKST();
   try {
-    await dbUpdate('seniors','senior_id',senior.senior_id, updates);
+    await dbUpdate('seniors','senior_id', senior.senior_id, updates);
     if (_detailSenior && _detailSenior.senior_id === senior.senior_id) {
       Object.assign(_detailSenior, updates);
     }
-    if (newMedal && newMedal !== prevMedal) {
+    if (newStarCount > prevStarCount) {
       spawnFireworks();
-      showAchievement(newMedal, senior.name+' 어르신', getMedalName(newMedal)+' 획득!',
-        '별자리 '+newConst+'개를 모아 '+getMedalName(newMedal)+'를 획득하셨어요!',
+      showAchievement('⭐', senior.name+' 어르신', '⭐ 별 '+newStarCount+'개 달성!',
+        '나무 '+newTrees+'그루를 키워 별 '+newStarCount+'개를 달성하셨어요!',
         '<button class="btn-primary" onclick="closeAchievement()" style="max-width:160px;font-size:14px;">감사합니다!</button>'
-        +'<button class="btn-secondary" onclick="printCertificate(\''+senior.name+'\',\''+newMedal+'\','+newConst+');closeAchievement()" style="font-size:14px;">🖨 상장 출력</button>');
-    } else if (newConst > prevConst) {
+        +'<button class="btn-secondary" onclick="printCertificate(\''+senior.name+'\','+newStarCount+','+newTrees+');closeAchievement()" style="font-size:14px;">🖨 상장 출력</button>');
+    } else if (newTrees > prevTrees) {
       spawnFireworks();
-      showAchievement('✨', senior.name+' 어르신', '별자리 완성!',
-        '별 5개를 모아 '+newConst+'번째 별자리가 완성되었어요!',
-        '<button class="btn-primary" onclick="closeAchievement()" style="max-width:180px;font-size:14px;">축하합니다! ✨</button>');
+      showAchievement('🌳', senior.name+' 어르신', '나무 1그루가 완성되었어요! 🌳',
+        '새싹 5개를 키워 '+newTrees+'번째 나무가 완성되었어요!',
+        '<button class="btn-primary" onclick="closeAchievement()" style="max-width:180px;font-size:14px;">축하합니다! 🌳</button>');
     }
-  } catch(e) { console.warn('별 업데이트 실패:', e.message); }
+  } catch(e) { console.warn('새싹 업데이트 실패:', e.message); }
 }
 
 function switchDetailTab(tab) {
@@ -2010,62 +2007,62 @@ async function loadTrack2(senior) {
 }
 
 function renderTrack2(senior, recs) {
-  const totalStars = senior.total_stars || 0;
-  const totalConst = senior.total_constellations || 0;
-  const medal = senior.current_medal || getMedal(totalConst);
+  const totalSprouts   = senior.total_stars || 0;
+  const totalTrees     = senior.total_constellations || 0;
+  const totalStarCount = getMedal(totalTrees);
 
-  const seasonStart = senior.season_start_date ? new Date(senior.season_start_date) : null;
   const now = new Date();
-  let seasonNum = 1;
-  if (seasonStart) {
-    const months = (now.getFullYear()-seasonStart.getFullYear())*12 + now.getMonth()-seasonStart.getMonth();
-    seasonNum = Math.floor(months/3)+1;
-  }
-  const currentSeasonStart = seasonStart ? (() => { const d=new Date(seasonStart); d.setMonth(d.getMonth()+(seasonNum-1)*3); return d; })() : now;
-  const seasonRecs = recs.filter(r => r.stars && new Date(r.created_at) >= currentSeasonStart);
-  const seasonStars = seasonRecs.reduce((sum,r) => sum+(r.stars||0), 0);
-  const starsInProgress = seasonStars % 5;
-  const starsToNext = starsInProgress===0 ? 5 : 5-starsInProgress;
-  const barPct = starsInProgress/5*100;
-  const seasonConst = Math.floor(seasonStars/5);
-  const starsVisual = '★'.repeat(starsInProgress)+'☆'.repeat(5-starsInProgress);
-  const constVisual = '✦'.repeat(Math.min(seasonConst,15))+(seasonConst>15?'…':'');
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthLabel = now.getFullYear() + '년 ' + (now.getMonth() + 1) + '월';
 
-  const medalHtml = medal
-    ? '<div class="t2-box"><div class="t2-label">🏅 현재 메달</div><div class="t2-medal-wrap"><div class="t2-medal-icon">'+medal+'</div><div class="t2-medal-text"><strong style="font-size:16px;">'+getMedalName(medal)+'</strong><br>누적 별자리 '+totalConst+'개<br><span style="color:#9ca3af;font-size:11px;">'+nextMedalHint(totalConst)+'</span></div></div></div>'
-    : '<div class="t2-box"><div class="t2-label">🏅 현재 메달</div><div style="color:#9ca3af;font-size:13px;">아직 메달이 없어요<br><span style="color:#374151;font-weight:600;">누적 별자리 '+totalConst+'개 · '+nextMedalHint(totalConst)+'</span></div></div>';
+  const monthRecs     = recs.filter(r => r.stars && new Date(r.created_at) >= thisMonthStart);
+  const monthSprouts  = monthRecs.reduce((sum, r) => sum + (r.stars || 0), 0);
+  const sproutsInProg = monthSprouts % 5;
+  const sproutsToNext = sproutsInProg === 0 ? 5 : 5 - sproutsInProg;
+  const barPct        = sproutsInProg / 5 * 100;
+  const monthTrees    = Math.floor(monthSprouts / 5);
 
-  const histHtml = buildSeasonHistory(senior, recs, seasonNum);
+  const sproutsVisual = '🌱'.repeat(sproutsInProg) + '○'.repeat(5 - sproutsInProg);
+  const treesVisual   = '🌳'.repeat(Math.min(monthTrees, 15)) + (monthTrees > 15 ? '…' : '');
+  const starDisplay   = totalStarCount > 0
+    ? '⭐'.repeat(Math.min(totalStarCount, 10)) + (totalStarCount > 10 ? ' (' + totalStarCount + '개)' : '')
+    : '<span style="color:#d1d5db;font-size:13px;">아직 없어요</span>';
+
+  const histHtml = buildMonthHistory(recs, now);
 
   return '<div class="track2-panel">'
-    +'<div class="t2-box"><div class="t2-label">⭐ 시즌 '+seasonNum+' 진행 중</div>'
-    +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;"><span class="t2-stars-big">'+seasonStars+'</span><span class="t2-sub">개 / 이번 시즌</span></div>'
-    +'<div style="font-size:18px;letter-spacing:2px;color:#f59e0b;margin-bottom:6px;">'+starsVisual+'</div>'
-    +'<div class="t2-bar-wrap"><div class="t2-bar" style="width:'+barPct+'%"></div></div>'
-    +'<div class="t2-hint">다음 별자리까지 ★'+starsToNext+'개 남아요</div></div>'
-    +'<div class="t2-box"><div class="t2-label">✦ 이번 시즌 별자리</div>'
-    +'<div style="font-size:22px;letter-spacing:3px;color:#6366f1;min-height:28px;">'+(constVisual||'<span style="color:#d1d5db;font-size:13px;">아직 없어요</span>')+'</div>'
-    +'<div style="font-size:13px;color:#374151;font-weight:600;margin-top:6px;">'+seasonConst+'개 완성</div></div>'
-    + medalHtml + histHtml
-    +'</div>';
+    + '<div class="t2-box"><div class="t2-label">🌱 ' + monthLabel + ' 새싹 현황</div>'
+    + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;"><span class="t2-stars-big" style="color:#22c55e;">' + monthSprouts + '</span><span class="t2-sub">개 / 이번 달</span></div>'
+    + '<div style="font-size:18px;letter-spacing:2px;margin-bottom:6px;">' + sproutsVisual + '</div>'
+    + '<div class="t2-bar-wrap"><div class="t2-bar" style="width:' + barPct + '%;background:linear-gradient(90deg,#22c55e,#86efac);"></div></div>'
+    + '<div class="t2-hint">다음 나무까지 🌱 ' + sproutsToNext + '개 남아요</div></div>'
+    + '<div class="t2-box"><div class="t2-label">🌳 이번 달 나무</div>'
+    + '<div style="font-size:22px;letter-spacing:3px;min-height:28px;">' + (treesVisual || '<span style="color:#d1d5db;font-size:13px;">아직 없어요</span>') + '</div>'
+    + '<div style="font-size:13px;color:#374151;font-weight:600;margin-top:6px;">' + monthTrees + '그루 완성</div></div>'
+    + '<div class="t2-box"><div class="t2-label">⭐ 누적 별</div>'
+    + '<div style="font-size:22px;letter-spacing:3px;min-height:28px;">' + starDisplay + '</div>'
+    + '<div style="font-size:13px;color:#374151;font-weight:600;margin-top:6px;">별 ' + totalStarCount + '개 · 나무 ' + totalTrees + '그루 누적</div>'
+    + '<div style="font-size:11px;color:#9ca3af;margin-top:3px;">' + nextMedalHint(totalTrees) + '</div></div>'
+    + histHtml + '</div>';
 }
 
-function buildSeasonHistory(senior, recs, currentSeasonNum) {
-  const startDate = senior.season_start_date ? new Date(senior.season_start_date) : null;
-  if (!startDate || currentSeasonNum <= 1) return '';
-  let html = '<div class="t2-box"><div class="t2-label">📦 역대 시즌 기록</div>';
-  for (let s = currentSeasonNum; s >= 1; s--) {
-    const sStart = new Date(startDate);
-    sStart.setMonth(sStart.getMonth()+(s-1)*3);
-    const sEnd = new Date(sStart);
-    sEnd.setMonth(sEnd.getMonth()+3);
-    const sRecs = recs.filter(r => { const d=new Date(r.created_at); return r.stars && d>=sStart && d<sEnd; });
-    const sStars = sRecs.reduce((sum,r) => sum+(r.stars||0), 0);
-    const sConst = Math.floor(sStars/5);
-    const tag = s===currentSeasonNum ? ' <span style="background:#dbeafe;color:#1e40af;font-size:10px;padding:1px 6px;border-radius:8px;">진행중</span>' : '';
-    html += '<div class="t2-season-item"><span class="t2-season-name">시즌 '+s+tag+'</span><span class="t2-season-stats">★'+sStars+' · ✦'+sConst+'</span></div>';
+function buildMonthHistory(recs, now) {
+  let html = '<div class="t2-box"><div class="t2-label">📦 지난 달 기록</div>';
+  let hasHistory = false;
+  for (let i = 1; i <= 3; i++) {
+    const d    = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const dEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    const sRecs  = recs.filter(r => { const rd = new Date(r.created_at); return r.stars && rd >= d && rd < dEnd; });
+    const sStars = sRecs.reduce((sum, r) => sum + (r.stars || 0), 0);
+    if (sStars > 0) {
+      const sTrees = Math.floor(sStars / 5);
+      const label  = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월';
+      html += '<div class="t2-season-item"><span class="t2-season-name">' + label + '</span><span class="t2-season-stats">🌱' + sStars + ' · 🌳' + sTrees + '</span></div>';
+      hasHistory = true;
+    }
   }
-  return html+'</div>';
+  if (!hasHistory) return '';
+  return html + '</div>';
 }
 
 function generateRecord() {
@@ -2194,7 +2191,7 @@ function onGuestSdcChange(type) {
   updateGuestScore();
   const cb = document.getElementById('guest-sdc-' + type);
   if (cb.checked) {
-    const msgs   = { autonomy:'스스로 결정하셨어요! ★', persistence:'포기하지 않으셨어요! ★★', relation:'따뜻한 마음을 나누셨어요! ★' };
+    const msgs   = { autonomy:'스스로 결정하셨어요! 🌱', persistence:'포기하지 않으셨어요! 🌱🌱', relation:'따뜻한 마음을 나누셨어요! 🌱' };
     const counts = { autonomy:1, persistence:2, relation:1 };
     showPraiseToast(msgs[type], cb);
     flyStarAnimation(cb, counts[type]);
@@ -2209,8 +2206,8 @@ function updateGuestStarPreview() {
   const textEl  = document.getElementById('guest-star-preview-text');
   if (!box) return;
   box.classList.add('visible');
-  starsEl.textContent = '★'.repeat(stars);
-  textEl.textContent  = '저장 시 ' + stars + '개의 별을 획득해요!';
+  starsEl.textContent = '🌱'.repeat(stars);
+  textEl.textContent  = '저장 시 새싹 ' + stars + '개를 획득해요!';
 }
 
 function generateGuestRecord() {
