@@ -2034,18 +2034,17 @@ function renderTrack2(senior, recs) {
 
   return '<div class="track2-panel">'
     + '<div class="t2-box"><div class="t2-label">🌱 ' + monthLabel + ' 새싹 현황</div>'
-    + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;"><span class="t2-stars-big" style="color:#22c55e;">' + monthSprouts + '</span><span class="t2-sub">개 / 이번 달</span></div>'
+    + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;"><span class="t2-stars-big" style="color:#22c55e;">' + sproutsInProg + '</span><span class="t2-sub">개 진행 중</span></div>'
     + '<div style="font-size:18px;letter-spacing:2px;margin-bottom:6px;">' + sproutsVisual + '</div>'
     + '<div class="t2-bar-wrap"><div class="t2-bar" style="width:' + barPct + '%;background:linear-gradient(90deg,#22c55e,#86efac);"></div></div>'
-    + '<div class="t2-hint">다음 나무까지 🌱 ' + sproutsToNext + '개 남아요</div></div>'
+    + '</div>'
     + '<div class="t2-box"><div class="t2-label">🌳 이번 달 나무</div>'
     + '<div style="font-size:18px;letter-spacing:2px;margin-bottom:6px;">' + treesVisual + '</div>'
-    + '<div style="font-size:13px;color:#374151;font-weight:600;margin-top:6px;">' + treesInProg + '그루 진행 중 <span style="color:#9ca3af;font-weight:400;">(이번 달 완성 ' + monthTotalTrees + '그루)</span></div>'
-    + '<div class="t2-hint">다음 별까지 🌳 ' + treesToNextStar + '그루 남아요</div></div>'
+    + '<div style="font-size:13px;color:#374151;font-weight:600;margin-top:6px;">' + treesInProg + '그루 진행 중</div>'
+    + '</div>'
     + '<div class="t2-box"><div class="t2-label">⭐ 누적 별</div>'
     + '<div style="font-size:22px;letter-spacing:3px;min-height:28px;">' + starDisplay + '</div>'
-    + '<div style="font-size:13px;color:#374151;font-weight:600;margin-top:6px;">별 ' + totalStarCount + '개 · 나무 ' + totalTrees + '그루 누적</div>'
-    + '<div style="font-size:11px;color:#9ca3af;margin-top:3px;">' + nextMedalHint(totalTrees) + '</div></div>'
+    + '<div style="font-size:13px;color:#374151;font-weight:600;margin-top:6px;">' + nextMedalHint(totalTrees) + '</div></div>'
     + histHtml + '</div>';
 }
 
