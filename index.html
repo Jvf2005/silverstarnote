@@ -1959,30 +1959,69 @@ function printCertificate(seniorName, stars, trees) {
   w.document.close();
 }
 
+// 월별로 별 수를 계산해 합산 — 나무는 월을 넘어 합산되지 않음
+function computeCumulativeStars(recs) {
+  const monthMap = {};
+  recs.forEach(r => {
+    if (!r.stars) return;
+    const d = new Date(r.created_at);
+    const key = d.getFullYear() + '-' + d.getMonth();
+    monthMap[key] = (monthMap[key] || 0) + r.stars;
+  });
+  let total = 0;
+  Object.values(monthMap).forEach(ms => {
+    total += Math.floor(Math.floor(ms / 5) / 5);
+  });
+  return total;
+}
+
 async function awardStars(senior, earned) {
-  const prevSprouts   = senior.total_stars || 0;
-  const prevTrees     = senior.total_constellations || 0;
-  const prevStarCount = getMedal(prevTrees);
-  const newSprouts    = prevSprouts + earned;
-  const newTrees      = Math.floor(newSprouts / 5);
-  const newStarCount  = getMedal(newTrees);
-  const updates = { total_stars: newSprouts, total_constellations: newTrees, current_medal: newStarCount };
-  if (!senior.season_start_date) updates.season_start_date = todayKST();
   try {
-    await dbUpdate('seniors','senior_id', senior.senior_id, updates);
+    // 저장된 레코드 전체 로드 (방금 저장된 것 포함)
+    const allRecs = await dbAll('records', {senior_id: senior.senior_id});
+
+    // 이번 달 집계
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthRecs    = allRecs.filter(r => r.stars && new Date(r.created_at) >= thisMonthStart);
+    const monthSprouts = monthRecs.reduce((sum, r) => sum + (r.stars || 0), 0);
+    const monthTrees   = Math.floor(monthSprouts / 5);
+    const monthStars   = Math.floor(monthTrees / 5);
+
+    // 이번 세션 이전 상태
+    const prevMonthSprouts = Math.max(0, monthSprouts - earned);
+    const prevMonthTrees   = Math.floor(prevMonthSprouts / 5);
+    const prevMonthStars   = Math.floor(prevMonthTrees / 5);
+
+    // 누적 별: 월별 별 합산
+    const newCumulativeStars  = computeCumulativeStars(allRecs);
+    const prevCumulativeStars = parseInt(senior.current_medal) || 0;
+
+    // DB 업데이트
+    const newTotalSprouts = (senior.total_stars || 0) + earned;
+    const updates = {
+      total_stars:        newTotalSprouts,
+      total_constellations: Math.floor(newTotalSprouts / 5),
+      current_medal:      newCumulativeStars
+    };
+    if (!senior.season_start_date) updates.season_start_date = todayKST();
+
+    await dbUpdate('seniors', 'senior_id', senior.senior_id, updates);
     if (_detailSenior && _detailSenior.senior_id === senior.senior_id) {
       Object.assign(_detailSenior, updates);
     }
-    if (newStarCount > prevStarCount) {
+
+    // 달성 알림
+    if (monthStars > prevMonthStars) {
       spawnFireworks();
-      showAchievement('⭐', senior.name+' 어르신', '⭐ 별 '+newStarCount+'개 달성!',
-        '나무 '+newTrees+'그루를 키워 별 '+newStarCount+'개를 달성하셨어요!',
+      showAchievement('⭐', senior.name+' 어르신', '⭐ 별 '+newCumulativeStars+'개 달성!',
+        '이번 달 나무 '+monthTrees+'그루를 키워 별을 달성하셨어요!',
         '<button class="btn-primary" onclick="closeAchievement()" style="max-width:160px;font-size:14px;">감사합니다!</button>'
-        +'<button class="btn-secondary" onclick="printCertificate(\''+senior.name+'\','+newStarCount+','+newTrees+');closeAchievement()" style="font-size:14px;">🖨 상장 출력</button>');
-    } else if (newTrees > prevTrees) {
+        +'<button class="btn-secondary" onclick="printCertificate(\''+senior.name+'\','+newCumulativeStars+','+monthTrees+');closeAchievement()" style="font-size:14px;">🖨 상장 출력</button>');
+    } else if (monthTrees > prevMonthTrees) {
       spawnFireworks();
       showAchievement('🌳', senior.name+' 어르신', '나무 1그루가 완성되었어요! 🌳',
-        '새싹 5개를 키워 '+newTrees+'번째 나무가 완성되었어요!',
+        '새싹 5개를 키워 이번 달 '+monthTrees+'번째 나무가 완성되었어요!',
         '<button class="btn-primary" onclick="closeAchievement()" style="max-width:180px;font-size:14px;">축하합니다! 🌳</button>');
     }
   } catch(e) { console.warn('새싹 업데이트 실패:', e.message); }
@@ -2007,9 +2046,8 @@ async function loadTrack2(senior) {
 }
 
 function renderTrack2(senior, recs) {
-  const totalSprouts   = senior.total_stars || 0;
-  const totalTrees     = senior.total_constellations || 0;
-  const totalStarCount = getMedal(totalTrees);
+  // 누적 별: 월별로 별 수를 계산해 합산 (나무는 월을 넘어 합산되지 않음)
+  const totalStarCount = computeCumulativeStars(recs);
 
   const now = new Date();
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -2026,16 +2064,12 @@ function renderTrack2(senior, recs) {
 
   const sproutsVisual = '🌱'.repeat(sproutsInProg) + '○'.repeat(5 - sproutsInProg);
   const treesVisual   = '🌳'.repeat(treesInProg)   + '○'.repeat(5 - treesInProg);
-  const starDisplay   = totalStarCount > 0
-    ? '⭐'.repeat(Math.min(totalStarCount, 10)) + (totalStarCount > 10 ? ' (' + totalStarCount + '개)' : '')
-    : '<span style="color:#d1d5db;font-size:13px;">아직 없어요</span>';
-
-  const histHtml = buildMonthHistory(recs, now);
-
-  const n = 'font-size:26px;font-weight:700;line-height:1;margin-bottom:8px;';
   const starEmoji = totalStarCount > 0
     ? '⭐'.repeat(Math.min(totalStarCount, 10)) + (totalStarCount > 10 ? '…' : '')
     : '<span style="color:#d1d5db;font-size:13px;">아직 없어요</span>';
+
+  const histHtml = buildMonthHistory(recs, now);
+  const n = 'font-size:26px;font-weight:700;line-height:1;margin-bottom:8px;';
 
   return '<div class="track2-panel">'
     + '<div class="t2-box"><div class="t2-label">🌱 ' + monthLabel + ' 새싹</div>'
