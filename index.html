@@ -598,6 +598,11 @@
         <a class="btn-text" style="margin-left:4px;" onclick="switchMemberTab('seniors')">어르신 목록에서 먼저 등록해주세요 →</a>
       </div>
       <div id="rec-form-body">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
+          <input type="checkbox" id="load-from-cal" onchange="onLoadFromCalendar(this.checked)" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:#2563eb;" />
+          <label for="load-from-cal" style="font-size:14px;font-weight:600;color:#1e40af;cursor:pointer;margin:0;">📅 수업 달력에서 불러오기</label>
+        </div>
+        <div id="cal-load-notice" style="display:none;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;font-size:13px;color:#92400e;margin-bottom:12px;">오늘 배정된 수업이 없습니다.</div>
         <div class="section-title" style="margin-bottom:14px;color:#1e40af;">📋 수업 공통 정보</div>
         <div class="field">
           <label>인지 영역</label>
@@ -1775,6 +1780,10 @@ async function initRecordForm() {
     document.getElementById('rec-result-box').classList.remove('visible');
     document.getElementById('rec-saved').classList.remove('visible');
     const spb = document.getElementById('star-preview-box'); if(spb) spb.classList.remove('visible');
+    const loadCal = document.getElementById('load-from-cal');
+    if (loadCal && loadCal.checked) { loadCal.checked = false; _lockCalendarFields(false); }
+    const calNotice = document.getElementById('cal-load-notice');
+    if (calNotice) calNotice.style.display = 'none';
   } catch(e) { console.error(e); }
 }
 
@@ -3449,6 +3458,73 @@ function prefillRecordForm(domain, type, topic, ssn) {
     if (ssn) { ssnVal.textContent = ssn; ssnInfo.style.display = 'block'; }
     else     { ssnInfo.style.display = 'none'; }
   }
+}
+
+// ── LOAD FROM CALENDAR ───────────────────────────────────────────────────────
+async function onLoadFromCalendar(checked) {
+  const notice = document.getElementById('cal-load-notice');
+  notice.style.display = 'none';
+
+  if (!checked) {
+    _resetCalendarLoad();
+    return;
+  }
+
+  const session = getSession();
+  if (!session) { document.getElementById('load-from-cal').checked = false; return; }
+
+  try {
+    const today = todayKST();
+    const { data, error } = await sb.from('schedules').select('*')
+      .eq('center_id', session.center_id).eq('date', today);
+    if (error) throw error;
+
+    const row = data && data[0];
+    if (!row) {
+      notice.style.display = 'block';
+      document.getElementById('load-from-cal').checked = false;
+      return;
+    }
+
+    // materials에서 ssn 추가 확인
+    let ssn = row.ssn || '';
+    if (ssn) {
+      const { data: mats } = await sb.from('materials').select('ssn').eq('ssn', ssn).limit(1);
+      if (!mats || !mats.length) ssn = '';
+    }
+
+    prefillRecordForm(row.domain, row.type, row.topic, ssn);
+    _lockCalendarFields(true);
+  } catch(e) {
+    console.error(e);
+    document.getElementById('load-from-cal').checked = false;
+  }
+}
+
+function _lockCalendarFields(lock) {
+  // 도메인 버튼
+  document.querySelectorAll('#mpane-record .domain-btn').forEach(btn => {
+    btn.style.pointerEvents = lock ? 'none' : '';
+    btn.style.opacity = lock ? (btn.classList.contains('active') ? '1' : '0.35') : '';
+  });
+  // 텍스트 필드
+  ['rec-tasktype', 'rec-topic'].forEach(id => {
+    const el = document.getElementById(id);
+    el.readOnly = lock;
+    el.style.background = lock ? '#f3f4f6' : '';
+    el.style.color = lock ? '#6b7280' : '';
+  });
+}
+
+function _resetCalendarLoad() {
+  document.getElementById('rec-tasktype').value = '';
+  document.getElementById('rec-topic').value = '';
+  document.getElementById('rec-ssn-info').style.display = 'none';
+  // 첫 번째 도메인 버튼(기억력)으로 복귀
+  const btns = document.querySelectorAll('#mpane-record .domain-btn');
+  btns.forEach((btn, i) => btn.classList.toggle('active', i === 0));
+  if (btns[0]) document.getElementById('rec-domain').value = btns[0].dataset.value;
+  _lockCalendarFields(false);
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
