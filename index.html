@@ -598,12 +598,14 @@
         <a class="btn-text" style="margin-left:4px;" onclick="switchMemberTab('seniors')">어르신 목록에서 먼저 등록해주세요 →</a>
       </div>
       <div id="rec-form-body">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:12px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
-          <input type="checkbox" id="load-from-cal" onchange="onLoadFromCalendar(this.checked)" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:#2563eb;" />
-          <label for="load-from-cal" style="font-size:14px;font-weight:600;color:#1e40af;cursor:pointer;margin:0;">📅 수업 달력에서 불러오기</label>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div class="section-title" style="margin:0;color:#1e40af;">📋 수업 공통 정보</div>
+          <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#1e40af;cursor:pointer;white-space:nowrap;">
+            <input type="checkbox" id="load-from-cal" onchange="onLoadFromCalendar(this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:#2563eb;" />
+            📅 수업 달력에서 불러오기
+          </label>
         </div>
         <div id="cal-load-notice" style="display:none;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;font-size:13px;color:#92400e;margin-bottom:12px;">오늘 배정된 수업이 없습니다.</div>
-        <div class="section-title" style="margin-bottom:14px;color:#1e40af;">📋 수업 공통 정보</div>
         <div class="field">
           <label>인지 영역</label>
           <div class="domain-grid">
