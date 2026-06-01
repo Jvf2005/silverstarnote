@@ -2381,55 +2381,78 @@ function pickMatSerial(sorted, usedInCycle) {
   return sorted[0];
 }
 
-// ── 도메인 시퀀스 생성 (인터리빙: 균등 간격 예약 → 충돌 해소) ───────────────
-function buildDomainSequence(slots) {
-  const N = DOMAIN_ORDER.reduce((s, d) => s + (slots[d] || 0), 0);
-  if (!N) return [];
+// ── 도메인 시퀀스 생성 (고정 간격 + 충돌 해결) ────────────────────────────────
+function buildDomainSequenceFixed(numDays) {
+  // 우선순위: 지남력 > 기억력 > 집행기능 > 언어기능 > 주의력 > 시공간기능
+  const PRIORITY = ['지남력','기억력','집행기능','언어기능','주의력','시공간기능'];
+  const pri = d => PRIORITY.indexOf(d);
 
-  // Step 1: 각 배정마다 이상적 위치 계산 (수업일 전체에 균등 분산)
-  const placements = [];
-  DOMAIN_ORDER.forEach(domain => {
-    const count = slots[domain] || 0;
-    for (let k = 0; k < count; k++) {
-      // k번째 슬롯의 이상 위치: 구간 중앙값
-      placements.push({ ideal: Math.floor((k + 0.5) * N / count), domain, count });
+  // 고정 간격 설정: anchor=첫 수업일(0-indexed), interval=반복 간격(null=1회)
+  const CONFIGS = [
+    { domain: '지남력',    anchor: 0, interval: null },
+    { domain: '기억력',    anchor: 1, interval: 3  },
+    { domain: '집행기능',  anchor: 2, interval: 5  },
+    { domain: '언어기능',  anchor: 3, interval: 8  },
+    { domain: '주의력',    anchor: 4, interval: 9  },
+    { domain: '시공간기능', anchor: 5, interval: 13 },
+  ];
+
+  // Step 1: 모든 배치 후보 생성
+  const allPlacements = [];
+  for (const { domain, anchor, interval } of CONFIGS) {
+    for (let pos = anchor; pos < numDays; pos = interval ? pos + interval : numDays) {
+      allPlacements.push({ domain, pos });
+      if (!interval) break;
     }
-  });
+  }
 
-  // Step 2: 배정 횟수 많은 영역 먼저 (제약 강한 순), 같으면 이상 위치 순
-  placements.sort((a, b) => b.count - a.count || a.ideal - b.ideal);
+  // Step 2: 우선순위 높은 순 → 위치 순으로 정렬 후 배치
+  // 높은 우선순위 영역이 먼저 원하는 날짜를 확보하고, 낮은 우선순위는 밀려남
+  allPlacements.sort((a, b) => pri(a.domain) - pri(b.domain) || a.pos - b.pos);
 
-  const assignment = new Array(N).fill(null);
+  const assignment = new Array(numDays).fill(null);
 
-  // 연속 배치 금지: 앞·뒤 슬롯이 같은 도메인이 아닌 빈 위치인지 확인
-  const canPlace = (pos, domain) =>
-    pos >= 0 && pos < N &&
-    assignment[pos] === null &&
-    assignment[pos - 1] !== domain &&
-    assignment[pos + 1] !== domain;
+  for (const { domain, pos } of allPlacements) {
+    // 충돌 해결: 최대 3칸(수업일)까지 뒤로 밀기
+    for (let offset = 0; offset <= 3; offset++) {
+      const p = pos + offset;
+      if (p >= numDays) break;
+      if (assignment[p] === null) { assignment[p] = domain; break; }
+    }
+  }
 
-  // Step 3: 각 배정을 이상 위치 기준으로 좌우 탐색하며 배치
-  for (const { ideal, domain } of placements) {
-    let placed = false;
-
-    // 연속 금지 조건 유지하며 가장 가까운 빈 슬롯 탐색
-    for (let d = 0; d <= N && !placed; d++) {
-      for (const pos of (d === 0 ? [ideal] : [ideal - d, ideal + d])) {
-        if (canPlace(pos, domain)) {
-          assignment[pos] = domain; placed = true; break;
+  // Step 3: 연속 배치 금지 — 같은 영역이 연속 2일이면 다음 빈 날로 이동
+  for (let pos = 1; pos < numDays; pos++) {
+    if (assignment[pos] && assignment[pos] === assignment[pos - 1]) {
+      const domain = assignment[pos];
+      assignment[pos] = null;
+      for (let p2 = pos + 1; p2 < numDays; p2++) {
+        if (assignment[p2] === null && assignment[p2 - 1] !== domain) {
+          assignment[p2] = domain; break;
         }
       }
     }
-    // 폴백: 연속 배치 허용하고 가장 가까운 빈 슬롯에 배치
-    if (!placed) {
-      for (let d = 0; d <= N && !placed; d++) {
-        for (const pos of (d === 0 ? [ideal] : [ideal - d, ideal + d])) {
-          if (pos >= 0 && pos < N && assignment[pos] === null) {
-            assignment[pos] = domain; placed = true; break;
-          }
-        }
+  }
+
+  // Step 4: 빈 슬롯 채우기 — 간격 대비 가장 오래된 영역 우선
+  const FILL_DOMAINS = ['기억력','집행기능','언어기능','주의력','시공간기능'];
+  const FILL_INTERVALS = { 기억력:3, 집행기능:5, 언어기능:8, 주의력:9, 시공간기능:13 };
+
+  for (let pos = 0; pos < numDays; pos++) {
+    if (assignment[pos] !== null) continue;
+    const prev = pos > 0 ? assignment[pos - 1] : null;
+    let best = null, bestScore = -Infinity;
+
+    for (const d of FILL_DOMAINS) {
+      if (d === prev) continue; // 연속 배치 금지
+      let lastPos = -(FILL_INTERVALS[d]); // 가상 시작점
+      for (let p2 = pos - 1; p2 >= 0; p2--) {
+        if (assignment[p2] === d) { lastPos = p2; break; }
       }
+      const score = (pos - lastPos) / FILL_INTERVALS[d];
+      if (score > bestScore) { bestScore = score; best = d; }
     }
+    if (best) assignment[pos] = best;
   }
 
   return assignment;
@@ -2450,13 +2473,12 @@ function calcMonthStats(year, month) {
   return { done, rate };
 }
 
-// ── 월간 스케줄 자동 생성 ────────────────────────────────────────────────────
-function generateMonthSchedule(year, month, prevStats) {
+// ── 월간 스케줄 자동 생성 (고정 간격 알고리즘) ──────────────────────────────
+function generateMonthSchedule(year, month) {
   const workDays = getWorkingDays(year, month);
   console.log('[schedule] generateMonthSchedule', year, month+1, '| workDays:', workDays.length, '| _calMats:', _calMats.length);
   if (!workDays.length || !_calMats.length) return [];
 
-  // is_ready=true 세트만, set_no 순 정렬
   const byDomain = {};
   DOMAIN_ORDER.forEach(d => {
     byDomain[d] = _calMats
@@ -2464,7 +2486,6 @@ function generateMonthSchedule(year, month, prevStats) {
       .sort((a, b) => (a.set_no || 0) - (b.set_no || 0));
   });
 
-  // 도메인별 순환 사용 추적 (Set of used set_no)
   const usedPerDomain = {};
   DOMAIN_ORDER.forEach(d => { usedPerDomain[d] = new Set(); });
 
@@ -2472,47 +2493,10 @@ function generateMonthSchedule(year, month, prevStats) {
     return pickMatSerial(byDomain[domain] || [], usedPerDomain[domain] || new Set());
   }
 
+  const seq = buildDomainSequenceFixed(workDays.length);
+
   const schedule = [];
-
-  // 매월 첫 수업일에 지남력 고정
-  // 1일이 월~토 → workDays[0] = 1일, 1일이 일요일 → workDays[0] = 2일
-  const jinamMat = pickNext('지남력');
-  schedule.push({
-    center_id: _calCenterId, date: workDays[0],
-    ssn: jinamMat?.ssn||null, set_no: jinamMat?.set_no||null, domain: '지남력',
-    type: jinamMat?.type||null, topic: jinamMat?.topic||null,
-    is_changed: false, is_completed: false,
-  });
-
-  const remainDays = workDays.slice(1);
-  const N = remainDays.length;
-  if (!N) return schedule;
-
-  // CIST 배점 비율 기반 슬롯 계산 (Largest Remainder Method)
-  // prevStats가 있으면 달성률 낮은 영역에 가중치 보정 (최대 50% 증가)
-  const adaptedW = {};
-  DOMAIN_ORDER.forEach(d => {
-    const base = DOMAIN_WEIGHTS[d];
-    if (prevStats && prevStats.rate[d] !== undefined) {
-      const shortfall = Math.max(0, 1 - prevStats.rate[d]);
-      adaptedW[d] = base * (1 + shortfall * 0.5);
-    } else {
-      adaptedW[d] = base;
-    }
-  });
-  const adaptedTotal = DOMAIN_ORDER.reduce((s, d) => s + adaptedW[d], 0);
-
-  const slots = {};
-  let assigned = 0;
-  DOMAIN_ORDER.forEach(d => { slots[d] = Math.floor(N * adaptedW[d] / adaptedTotal); assigned += slots[d]; });
-  const rems = DOMAIN_ORDER.map(d => ({ d, r: (N * adaptedW[d] / adaptedTotal) - slots[d] }))
-    .sort((a, b) => b.r - a.r);
-  let extra = N - assigned;
-  rems.forEach(({ d }) => { if (extra > 0) { slots[d]++; extra--; } });
-
-  const seq = buildDomainSequence(slots);
-
-  remainDays.forEach((dateStr, i) => {
+  workDays.forEach((dateStr, i) => {
     const domain = seq[i] || '기억력';
     const mat = pickNext(domain);
     schedule.push({
@@ -2559,25 +2543,40 @@ async function loadSchedulesForMonth(year, month) {
 
 // ── 월 스케줄 보장 (없으면 2개월 자동생성) ──────────────────────────────────
 async function ensureSchedulesLoaded(year, month) {
+  const SCHED_VERSION = 'v2-fixed-interval';
   const key = year + '-' + month;
   if (_calSchedulesLoaded.has(key)) return;
   if (!_calCenterId) { _calSchedulesLoaded.add(key); return; }
 
   try {
+    // 알고리즘 버전 변경 시: 미래 미완료 스케줄 삭제 후 재생성 (1회)
+    const versionKey = 'sched_algo_v_' + _calCenterId;
+    if (localStorage.getItem(versionKey) !== SCHED_VERSION) {
+      const today = new Date().toISOString().split('T')[0];
+      const { error: delErr } = await sb.from('schedules')
+        .delete()
+        .eq('center_id', _calCenterId)
+        .gte('date', today)
+        .eq('is_completed', false);
+      if (delErr) console.error('[schedule] migration delete error:', delErr);
+      else {
+        console.log('[schedule] migration: future schedules cleared for new algorithm');
+        localStorage.setItem(versionKey, SCHED_VERSION);
+        _calSchedulesLoaded.clear();
+      }
+    }
+
     const count = await loadSchedulesForMonth(year, month);
     console.log('[schedule] loaded', count, 'rows for', year, month+1, '| mats:', _calMats.length);
 
     if (count === 0 && _calMats.length > 0) {
-      const nextD    = new Date(year, month + 1, 1);
-      // 이번 달 생성 후, 다음 달은 이번 달 통계 기반 적응형 가중치 적용
+      const nextD = new Date(year, month + 1, 1);
       const thisRows = generateMonthSchedule(year, month);
-      const prevStats = calcMonthStats(year, month);
-      const nextRows = generateMonthSchedule(nextD.getFullYear(), nextD.getMonth(), prevStats);
+      const nextRows = generateMonthSchedule(nextD.getFullYear(), nextD.getMonth());
       const allRows = [...thisRows, ...nextRows];
       console.log('[schedule] generated', allRows.length, 'rows for 2 months');
 
       if (allRows.length > 0) {
-        // 이미 존재하는 날짜 확인 후 신규만 INSERT (UNIQUE 제약 불필요)
         const dates = allRows.map(r => r.date);
         const { data: existing, error: selErr } = await sb.from('schedules')
           .select('date').eq('center_id', _calCenterId).in('date', dates);
@@ -2592,7 +2591,6 @@ async function ensureSchedulesLoaded(year, month) {
           if (insErr) throw insErr;
         }
 
-        // 삽입 후 재로드 (id 포함)
         await loadSchedulesForMonth(year, month);
         _calSchedulesLoaded.add(key);
 
@@ -2609,7 +2607,6 @@ async function ensureSchedulesLoaded(year, month) {
     }
   } catch(e) {
     console.error('[schedule] ensureSchedulesLoaded error:', e);
-    // _calSchedulesLoaded에 추가하지 않아 다음 호출 시 재시도
   }
 }
 
