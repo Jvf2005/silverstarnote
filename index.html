@@ -2333,6 +2333,7 @@ var _lsActivities = {}; // openLessonStart 에서 로드한 활동별 교재 { '
 var _calCenterId = null;
 var _calCenterName = '';
 var _calMatsLoaded = false;
+var _calCenterAlgoV = null; // 서버측 적용 스케줄 알고리즘 버전 (centers.sched_algo_version)
 var _calSchedulesLoaded = new Set(); // 'YYYY-M' keys already loaded from Supabase
 
 const DOMAIN_WEIGHTS = { 기억력:10, 집행기능:6, 지남력:5, 언어기능:4, 주의력:3, 시공간기능:2 };
@@ -2549,17 +2550,48 @@ async function ensureSchedulesLoaded(year, month) {
   if (!_calCenterId) { _calSchedulesLoaded.add(key); return; }
 
   try {
-    // 알고리즘 버전 변경 시: 2026-06-01 이후 스케줄 전체 삭제 후 재생성 (1회)
+    // ── 알고리즘 버전 변경 시: 미래의 '재생성 가능한' 스케줄만 다시 생성 (센터당 1회) ──
+    // 완료 여부는 서버측(centers.sched_algo_version)에 저장한다. localStorage는 보조 캐시일 뿐,
+    // 기기/브라우저가 바뀌어도 다른 직원이 쌓아둔 데이터를 중복 삭제하지 않도록 한다.
     const versionKey = 'sched_algo_v_' + _calCenterId;
-    if (localStorage.getItem(versionKey) !== SCHED_VERSION) {
-      const { error: delErr } = await sb.from('schedules')
-        .delete()
+    const serverVer  = _calCenterAlgoV;
+    const localVer   = localStorage.getItem(versionKey);
+    const migrated   = (serverVer === SCHED_VERSION) ||
+                       (serverVer == null && localVer === SCHED_VERSION);
+
+    if (!migrated) {
+      // 오늘 이후의 스케줄만 후보로 삼고, 그중에서도 완료(is_completed)·수동변경(is_changed)·
+      // 난이도기록(senior_difficulties)이 남아있는 행은 절대 삭제하지 않는다. (직원 입력 데이터 보호)
+      const today = todayKST();
+      const { data: futureRows, error: selErr } = await sb.from('schedules')
+        .select('id, is_completed, is_changed, senior_difficulties')
         .eq('center_id', _calCenterId)
-        .gte('date', '2026-06-01');
-      if (delErr) console.error('[schedule] migration delete error:', delErr);
-      else {
-        console.log('[schedule] migration: future schedules cleared for new algorithm');
-        localStorage.setItem(versionKey, SCHED_VERSION);
+        .gte('date', today);
+
+      if (selErr) {
+        console.error('[schedule] migration select error:', selErr);
+      } else {
+        const deletableIds = (futureRows || [])
+          .filter(r => !r.is_completed && !r.is_changed &&
+                       (!r.senior_difficulties || Object.keys(r.senior_difficulties).length === 0))
+          .map(r => r.id);
+
+        if (deletableIds.length) {
+          const { error: delErr } = await sb.from('schedules').delete().in('id', deletableIds);
+          if (delErr) console.error('[schedule] migration delete error:', delErr);
+          else console.log('[schedule] migration: cleared', deletableIds.length, 'regenerable future rows');
+        } else {
+          console.log('[schedule] migration: no regenerable future rows to clear');
+        }
+
+        // 적용 버전을 서버측에 기록 → 다른 기기에서 재실행 방지 (센터당 1회)
+        const { error: verErr } = await sb.from('centers')
+          .update({ sched_algo_version: SCHED_VERSION })
+          .eq('center_id', _calCenterId);
+        if (verErr) console.warn('[schedule] 버전 기록 실패. centers.sched_algo_version 컬럼을 추가하세요.', verErr);
+        else _calCenterAlgoV = SCHED_VERSION;
+
+        localStorage.setItem(versionKey, SCHED_VERSION); // 보조 캐시
         _calSchedulesLoaded.clear();
       }
     }
@@ -2637,7 +2669,7 @@ async function showCalendar(paneId) {
 
   // Center name
   if (!_calCenterName) {
-    try { const c = await dbOne('centers',{center_id:_calCenterId}); _calCenterName = c ? c.name : ''; } catch(e) {}
+    try { const c = await dbOne('centers',{center_id:_calCenterId}); _calCenterName = c ? c.name : ''; if (c) _calCenterAlgoV = c.sched_algo_version || null; } catch(e) {}
   }
 
   // Seniors
