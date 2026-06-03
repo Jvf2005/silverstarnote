@@ -2270,6 +2270,7 @@ function generateGuestRecord() {
   document.getElementById('guest-result-text').textContent = text;
   document.getElementById('guest-result-box').classList.add('visible');
   document.getElementById('guest-copy-ok').classList.remove('visible');
+  document.getElementById('guest-result-box').scrollIntoView({ behavior:'smooth', block:'center' });
 }
 
 function copyGuestRecord() {
