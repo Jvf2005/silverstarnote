@@ -460,7 +460,7 @@
     <div id="creg-s2" style="display:none">
       <div class="section-title">관리자 계정 (센터장)</div>
       <div class="field"><label>이름 <span style="color:#ef4444">*</span></label><input type="text" id="creg-aname" placeholder="관리자 이름" /></div>
-      <div class="field"><label>이메일 <span style="color:#ef4444">*</span></label><input type="email" id="creg-email" placeholder="admin@center.com" /><div class="field-hint">이 이메일로 인증 코드가 발송됩니다</div></div>
+      <div class="field"><label>이메일 <span style="color:#ef4444">*</span></label><input type="email" id="creg-email" placeholder="admin@center.com" /><div class="field-hint">이 이메일로 인증 링크가 발송됩니다</div></div>
       <div class="field"><label>비밀번호 <span style="color:#ef4444">*</span></label><input type="password" id="creg-pw" placeholder="8자 이상" /></div>
       <div class="field"><label>비밀번호 확인 <span style="color:#ef4444">*</span></label><input type="password" id="creg-pw2" placeholder="비밀번호 재입력" /></div>
       <div class="row">
@@ -1150,19 +1150,42 @@ async function dbUpdate(table, idCol, idVal, updates) {
   if (error) throw error;
 }
 
-// ── SESSION (localStorage) ───────────────────────────────────────────────────
-function getSession() { try { return JSON.parse(localStorage.getItem('ss_session')); } catch(e) { return null; } }
-function setSession(o){ localStorage.setItem('ss_session', JSON.stringify(o)); }
-function clearSession(){ localStorage.removeItem('ss_session'); }
+// ── SESSION (Supabase Auth 기반) ─────────────────────────────────────────────
+// 앱 전역은 getSession()으로 {user_id, center_id, role, name, is_demo}를 동기 조회한다.
+// 실제 값은 로그인/페이지로드 시 loadSession()이 Supabase Auth + profiles에서 채운다.
+let _session = null;
+function getSession() { return _session; }
+function clearSession() { _session = null; }
+
+async function loadSession() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) { _session = null; return null; }
+  let prof = null;
+  try { prof = await dbOne('profiles', { id: user.id }); } catch(e) { console.error('profile load:', e); }
+  if (!prof || prof.is_active === false || !prof.center_id) { _session = null; return null; }
+  _session = {
+    user_id:   user.id,
+    center_id: prof.center_id,
+    role:      prof.role,
+    name:      prof.name,
+    is_demo:   !!prof.is_demo,
+    email:     user.email,
+  };
+  return _session;
+}
+
+// 데모 계정의 쓰기 시도를 막고 안내 (DB의 RLS가 최종 차단하지만, UX용 선제 안내)
+function demoBlocked() {
+  if (getSession()?.is_demo) {
+    alert('데모 계정은 둘러보기 전용입니다. 저장·변경은 가입 후 이용해 주세요.\n(문장 생성·복사는 자유롭게 체험하실 수 있어요.)');
+    return true;
+  }
+  return false;
+}
 
 // ── UTILS ────────────────────────────────────────────────────────────────────
 function genId(p)    { return p + '-' + Math.random().toString(36).substr(2,8).toUpperCase(); }
 function genInvite() { return 'INV-' + Math.random().toString(36).substr(2,6).toUpperCase(); }
-function hashPw(s) {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
-  return h.toString(16);
-}
 function showAlert(el, msg) { el.textContent = msg; el.classList.add('visible'); }
 // DB 저장은 UTC 유지, 화면 표시만 KST(Asia/Seoul, UTC+9) 변환
 const _KST_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }); // YYYY-MM-DD
@@ -1236,17 +1259,24 @@ async function doLogin() {
   if (!email || !pw) { showAlert(al, '이메일과 비밀번호를 입력해주세요.'); return; }
   setBtnLoading('login-btn', true);
   try {
-    const rows = await dbAll('users', { email });
-    const user = rows.find(u => u.pw_hash === hashPw(pw));
-    if (!user)           { showAlert(al, '이메일 또는 비밀번호가 올바르지 않습니다.'); return; }
-    if (!user.is_active) { showAlert(al, '비활성화된 계정입니다. 관리자에게 문의하세요.'); return; }
-    setSession({ user_id: user.user_id, center_id: user.center_id, role: user.role });
-    await goToDashboard(user);
+    const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+    if (error) {
+      const m = (error.message || '').toLowerCase();
+      if (m.includes('confirm'))
+        showAlert(al, '이메일 인증이 필요합니다. 가입 시 받은 메일의 링크를 먼저 확인해주세요.');
+      else
+        showAlert(al, '이메일 또는 비밀번호가 올바르지 않습니다.');
+      return;
+    }
+    const s = await loadSession();
+    if (!s) { await sb.auth.signOut(); showAlert(al, '계정 정보를 불러오지 못했습니다. 관리자에게 문의하세요.'); return; }
+    await goToDashboard();
   } catch(e) { dbErr(al, e); }
   finally    { setBtnLoading('login-btn', false); }
 }
 
-function doLogout() {
+async function doLogout() {
+  try { await sb.auth.signOut(); } catch(e) { console.error('signOut:', e); }
   clearSession();
   // 달력 상태 초기화 (다음 로그인 시 새로 로드)
   _calPlan = {};
@@ -1261,12 +1291,14 @@ function doLogout() {
   showScreen('s-guest');
 }
 
-async function goToDashboard(user) {
-  const center = await dbOne('centers', { center_id: user.center_id });
-  if (!center) { doLogout(); return; }
-  if (user.role === 'admin') {
+async function goToDashboard() {
+  const s = getSession();
+  if (!s) { showScreen('s-login'); return; }
+  const center = await dbOne('centers', { center_id: s.center_id });
+  if (!center) { await doLogout(); return; }
+  if (s.role === 'admin') {
     document.getElementById('admin-center-tag').textContent = center.name;
-    document.getElementById('admin-name-tag').textContent   = user.name + ' 관리자';
+    document.getElementById('admin-name-tag').textContent   = s.name + ' 관리자';
     document.getElementById('ai-id').textContent    = center.center_id;
     document.getElementById('ai-name').textContent  = center.name;
     document.getElementById('ai-biz').textContent   = center.business_no;
@@ -1277,7 +1309,7 @@ async function goToDashboard(user) {
     showScreen('s-admin');
   } else {
     document.getElementById('member-center-tag').textContent = center.name;
-    document.getElementById('member-name-tag').textContent   = user.name + ' 복지사';
+    document.getElementById('member-name-tag').textContent   = s.name + (s.is_demo ? ' (데모 · 둘러보기 전용)' : ' 복지사');
     switchMemberTab('seniors');
     showScreen('s-member');
   }
@@ -1292,18 +1324,12 @@ async function cregStep1Next() {
   const rep   = document.getElementById('creg-rep').value.trim();
   const al    = document.getElementById('creg-alert');
   if (!cname||!bizno||!rep) { showAlert(al,'모든 필드를 입력해주세요.'); return; }
-  setBtnLoading('creg-btn1', true);
-  try {
-    const dup = await dbOne('centers', { business_no: bizno });
-    if (dup) { showAlert(al,'이미 등록된 사업자번호입니다.'); return; }
-    _creg = {cname,bizno,rep}; al.classList.remove('visible');
-    document.getElementById('creg-s1').style.display='none';
-    document.getElementById('creg-s2').style.display='block';
-    document.getElementById('cs1-dot').className='step done';
-    document.getElementById('cs2-dot').className='step active';
-    document.getElementById('cs-line1').className='step-line done';
-  } catch(e) { dbErr(al,e); }
-  finally    { setBtnLoading('creg-btn1', false); }
+  _creg = {cname,bizno,rep}; al.classList.remove('visible');
+  document.getElementById('creg-s1').style.display='none';
+  document.getElementById('creg-s2').style.display='block';
+  document.getElementById('cs1-dot').className='step done';
+  document.getElementById('cs2-dot').className='step active';
+  document.getElementById('cs-line1').className='step-line done';
 }
 
 function cregStep1Back() {
@@ -1325,60 +1351,52 @@ async function cregStep2Next() {
   if (pw!==pw2)    { showAlert(al,'비밀번호가 일치하지 않습니다.'); return; }
   setBtnLoading('creg-btn2', true);
   try {
-    const dup = await dbOne('users', { email });
-    if (dup) { showAlert(al,'이미 사용 중인 이메일입니다.'); return; }
-    _creg.aname=aname; _creg.email=email; _creg.pw=pw;
-    _vcode=String(Math.floor(100000+Math.random()*900000));
+    const { error } = await sb.auth.signUp({
+      email, password: pw,
+      options: {
+        emailRedirectTo: window.location.origin,
+        data: {
+          signup_role:   'admin',
+          display_name:  aname,
+          center_name:   _creg.cname,
+          business_no:   _creg.bizno,
+          representative:_creg.rep,
+        }
+      }
+    });
+    if (error) { showAlert(al, '가입 실패: ' + error.message); return; }
     al.classList.remove('visible');
     document.getElementById('creg-s2').style.display='none';
     document.getElementById('creg-s3').style.display='block';
     document.getElementById('cs2-dot').className='step done';
     document.getElementById('cs3-dot').className='step active';
     document.getElementById('cs-line2').className='step-line done';
-    document.getElementById('creg-verify-desc').textContent=email+' 으로 인증 코드를 발송했습니다.';
-    document.getElementById('creg-proto-hint').innerHTML=
-      '🔧 프로토타입 모드 — 실제 이메일 발송 없이 진행합니다<br>임시 인증 코드: <strong style="font-size:18px;letter-spacing:4px;">'+_vcode+'</strong>';
+    document.getElementById('creg-verify-desc').innerHTML =
+      '<b>'+email+'</b> 으로 인증 메일을 보냈습니다.<br>메일의 링크를 클릭해 인증을 완료한 뒤 로그인해 주세요.';
+    document.getElementById('creg-proto-hint').style.display = 'none';
+    document.getElementById('creg-vcode').closest('.field').style.display = 'none';
+    document.getElementById('creg-btn3').textContent = '로그인하러 가기';
   } catch(e) { dbErr(al,e); }
   finally    { setBtnLoading('creg-btn2', false); }
 }
 
-async function cregVerify() {
-  const code=document.getElementById('creg-vcode').value.trim();
-  const al=document.getElementById('creg-alert');
-  if (code!==_vcode) { showAlert(al,'인증 코드가 올바르지 않습니다.'); return; }
-  setBtnLoading('creg-btn3', true);
-  try {
-    const centerId=genId('CNT');
-    await dbInsert('centers', {
-      center_id:centerId, name:_creg.cname, business_no:_creg.bizno,
-      representative:_creg.rep, subscription:'active',
-      invite_code:genInvite(), created_at:new Date().toISOString()
-    });
-    const user = {
-      user_id:genId('USR'), name:_creg.aname, email:_creg.email,
-      pw_hash:hashPw(_creg.pw), role:'admin', center_id:centerId,
-      is_active:true, email_verified:true, created_at:new Date().toISOString()
-    };
-    await dbInsert('users', user);
-    setSession({user_id:user.user_id, center_id:centerId, role:'admin'});
-    _creg={}; _vcode='';
-    await goToDashboard(user);
-  } catch(e) { dbErr(al,e); }
-  finally    { setBtnLoading('creg-btn3', false); }
-}
+// 가입은 signUp 시점에 트리거가 센터·프로필을 생성한다.
+// 이메일 링크 인증 후 로그인하면 됨 → 이 버튼은 로그인 화면으로 이동.
+function cregVerify() { showScreen('s-login'); }
 
 // ── MEMBER REGISTRATION ──────────────────────────────────────────────────────
-var _inviteCenter = null;
+var _inviteCenterName = null;
 
 async function checkInviteCode(val) {
   const code=val.trim().toUpperCase();
   const hint=document.getElementById('mreg-center-hint');
-  if (code.length < 10) { hint.textContent=''; _inviteCenter=null; return; }
+  if (code.length < 10) { hint.textContent=''; _inviteCenterName=null; return; }
   try {
-    const center=await dbOne('centers',{invite_code:code});
-    _inviteCenter=center;
-    if (center) { hint.style.color='#16a34a'; hint.textContent='✅ '+center.name+' — 유효한 초대 코드'; }
-    else        { hint.style.color='#ef4444'; hint.textContent='유효하지 않은 초대 코드입니다'; }
+    const { data, error } = await sb.rpc('center_name_for_invite', { p_invite: code });
+    if (error) throw error;
+    _inviteCenterName = data || null;
+    if (data) { hint.style.color='#16a34a'; hint.textContent='✅ '+data+' — 유효한 초대 코드'; }
+    else      { hint.style.color='#ef4444'; hint.textContent='유효하지 않은 초대 코드입니다'; }
   } catch(e) { hint.textContent=''; }
 }
 
@@ -1394,18 +1412,21 @@ async function doMemberReg() {
   if (pw!==pw2)    { showAlert(al,'비밀번호가 일치하지 않습니다.'); return; }
   setBtnLoading('mreg-btn', true);
   try {
-    const center = _inviteCenter || await dbOne('centers',{invite_code:code});
-    if (!center) { showAlert(al,'유효하지 않은 초대 코드입니다.'); return; }
-    const dup = await dbOne('users',{email});
-    if (dup) { showAlert(al,'이미 사용 중인 이메일입니다.'); return; }
-    const user = {
-      user_id:genId('USR'), name, email, pw_hash:hashPw(pw),
-      role:'member', center_id:center.center_id,
-      is_active:true, email_verified:true, created_at:new Date().toISOString()
-    };
-    await dbInsert('users', user);
-    setSession({user_id:user.user_id, center_id:center.center_id, role:'member'});
-    await goToDashboard(user);
+    // 초대코드 유효성 선확인 (RPC). 최종 검증은 가입 트리거가 다시 수행.
+    if (!_inviteCenterName) {
+      const { data } = await sb.rpc('center_name_for_invite', { p_invite: code });
+      if (!data) { showAlert(al,'유효하지 않은 초대 코드입니다.'); return; }
+    }
+    const { error } = await sb.auth.signUp({
+      email, password: pw,
+      options: {
+        emailRedirectTo: window.location.origin,
+        data: { signup_role:'member', display_name:name, invite_code:code }
+      }
+    });
+    if (error) { showAlert(al, '가입 실패: ' + error.message); return; }
+    alert(email + ' 으로 인증 메일을 보냈습니다.\n메일의 링크를 클릭해 인증을 완료한 뒤 로그인해 주세요.');
+    showScreen('s-login');
   } catch(e) { dbErr(al,e); }
   finally    { setBtnLoading('mreg-btn', false); }
 }
@@ -1436,23 +1457,24 @@ async function renderMembersTable() {
   const tbody=document.getElementById('members-tbody');
   tbody.innerHTML='<tr class="empty-row"><td colspan="5" style="color:#9ca3af;">불러오는 중…</td></tr>';
   try {
-    const users=await dbAll('users',{center_id:session.center_id});
+    const users=await dbAll('profiles',{center_id:session.center_id});
     if (!users.length) { tbody.innerHTML='<tr class="empty-row"><td colspan="5">아직 가입한 직원이 없습니다.</td></tr>'; return; }
     tbody.innerHTML=users.map(u=>{
       const roleBadge=u.role==='admin'?'<span class="badge badge-admin">관리자</span>':'<span class="badge badge-member">멤버</span>';
       const statusBadge=u.is_active?'<span class="badge" style="background:#d1fae5;color:#065f46;">활성</span>':'<span class="badge" style="background:#f3f4f6;color:#9ca3af;">비활성</span>';
-      const isSelf=u.user_id===session.user_id;
+      const isSelf=u.id===session.user_id;
       const action=isSelf?'<span style="font-size:12px;color:#9ca3af;">본인</span>'
-        :u.is_active?'<button class="btn-danger" onclick="toggleUser(\''+u.user_id+'\',false)">비활성화</button>'
-        :'<button class="btn-secondary" style="font-size:13px;padding:5px 11px;" onclick="toggleUser(\''+u.user_id+'\',true)">복구</button>';
-      return '<tr><td><strong>'+u.name+'</strong></td><td style="color:#6b7280;">'+u.email+'</td><td>'+roleBadge+'</td><td>'+statusBadge+'</td><td>'+action+'</td></tr>';
+        :u.is_active?'<button class="btn-danger" onclick="toggleUser(\''+u.id+'\',false)">비활성화</button>'
+        :'<button class="btn-secondary" style="font-size:13px;padding:5px 11px;" onclick="toggleUser(\''+u.id+'\',true)">복구</button>';
+      return '<tr><td><strong>'+(u.name||'')+'</strong></td><td style="color:#6b7280;">'+(u.email||'')+'</td><td>'+roleBadge+'</td><td>'+statusBadge+'</td><td>'+action+'</td></tr>';
     }).join('');
   } catch(e) { tbody.innerHTML='<tr class="empty-row"><td colspan="5" style="color:#ef4444;">불러오기 실패</td></tr>'; console.error(e); }
 }
 
 async function toggleUser(uid, activate) {
+  if (demoBlocked()) return;
   try {
-    await dbUpdate('users','user_id',uid,{is_active:activate});
+    await dbUpdate('profiles','id',uid,{is_active:activate});
     await renderMembersTable();
   } catch(e) { alert('오류가 발생했습니다.'); console.error(e); }
 }
@@ -1645,6 +1667,7 @@ async function openSeniorEdit(sid) {
 }
 
 async function submitSeniorReg() {
+  if (demoBlocked()) return;
   const name   = document.getElementById('sreg-name').value.trim();
   const birthVal = document.getElementById('sreg-birth').value;
   const birth  = parseInt(birthVal);
@@ -1733,6 +1756,7 @@ async function renderSeniorRecords(sid) {
 
 async function toggleSeniorActive() {
   if (!_detailSenior) return;
+  if (demoBlocked()) return;
   try {
     const newState=!_detailSenior.is_active;
     await dbUpdate('seniors','senior_id',_detailSenior.senior_id,{is_active:newState});
@@ -2170,15 +2194,15 @@ function generateRecord() {
 async function saveRecord() {
   if (!_selectedSenior) return;
   const session=getSession(); if (!session) { showLoginRequired(); return; }
+  if (demoBlocked()) return;
   const text=document.getElementById('rec-result-text').textContent; if (!text) return;
   setBtnLoading('save-rec-btn', true);
   try {
-    const user=await dbOne('users',{user_id:session.user_id});
     const stars = calcSessionStars();
     await dbInsert('records',{
       record_id:genId('REC'),
       senior_id:_selectedSenior.senior_id, senior_name:_selectedSenior.name,
-      user_id:session.user_id, user_name:user?user.name:'알 수 없음',
+      user_id:session.user_id, user_name:session.name||'알 수 없음',
       center_id:session.center_id,
       domain:document.getElementById('rec-domain').value,
       task_type:document.getElementById('rec-tasktype').value.trim(),
@@ -2322,6 +2346,7 @@ const DOMAIN_ORDER   = ['기억력','집행기능','지남력','언어기능','�
 async function updateScheduleRow(dateStr, updates) {
   const plan = _calPlan[dateStr];
   if (!plan) return;
+  if (demoBlocked()) return;
   try {
     if (plan._id) {
       const { error } = await sb.from('schedules').update(updates).eq('id', plan._id);
@@ -3549,14 +3574,20 @@ document.addEventListener('DOMContentLoaded', function() {
   initGuestHelpLevel();
 });
 
-(async function init() {
-  const session=getSession();
-  if (session) {
-    try {
-      const user=await dbOne('users',{user_id:session.user_id});
-      if (user&&user.is_active) { await goToDashboard(user); return; }
-    } catch(e) { console.error('init error:', e); }
+// 이메일 인증 링크 복귀 등으로 세션이 잡히면 자동으로 대시보드 진입
+sb.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_IN' && !getSession()) {
+    loadSession().then(s => { if (s) goToDashboard(); });
+  } else if (event === 'SIGNED_OUT') {
+    clearSession();
   }
+});
+
+(async function init() {
+  try {
+    const s = await loadSession();
+    if (s) { await goToDashboard(); return; }
+  } catch(e) { console.error('init error:', e); }
   showScreen('s-guest');
 })();
 </script>
