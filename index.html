@@ -1815,23 +1815,9 @@ function selectHelpLevel(btn) {
   updateScore();
 }
 
-function updateScore() {
-  const base = parseInt(document.getElementById('rec-base-score').value) || 80;
-  let bonus = 0;
-  if (document.getElementById('sdc-autonomy').checked)    bonus += 5;
-  if (document.getElementById('sdc-persistence').checked) bonus += 5;
-  if (document.getElementById('sdc-relation').checked)    bonus += 5;
-  const total = Math.min(100, base + bonus);
-  document.getElementById('help-level-bar').style.width = total + '%';
-  document.getElementById('help-level-score').textContent = total + '점';
-}
+function updateScore() { updateScoreFor(''); }
 
-function toggleRelationInput() {
-  const cb  = document.getElementById('sdc-relation');
-  const inp = document.getElementById('sdc-relation-input');
-  inp.style.display = cb.checked ? 'block' : 'none';
-  if (!cb.checked) inp.value = '';
-}
+function toggleRelationInput() { toggleRelationFor(''); }
 
 function initHelpLevel() {
   const defaultBtn = document.querySelector('.help-level-btn[data-level="verbal"]');
@@ -1855,37 +1841,69 @@ function nextMedalHint(n) {
   return '⭐ 다음 별까지 🌳 ' + toNext + '그루 남음';
 }
 
-function calcSessionStars() {
+// ── SDC 계산·표시 공용 로직 ──────────────────────────────────────────────────
+// 규칙은 여기 한 곳에만 둔다. 로그인('')과 게스트('guest-')는 요소 ID 접두사(prefix)만 다르다.
+const SDC_TYPES       = ['autonomy', 'persistence', 'relation'];
+const SDC_STAR_COUNTS = { autonomy: 1, persistence: 2, relation: 1 }; // 항목별 새싹 가중치 (기본 1 + 합산, 최대 5)
+const SDC_SCORE_BONUS = 5;  // 항목당 점수 보너스 (상한 100)
+const SDC_PRAISE = {
+  autonomy:    '스스로 결정하셨어요! 🌱',
+  persistence: '포기하지 않으셨어요! 🌱🌱',
+  relation:    '따뜻한 마음을 나누셨어요! 🌱',
+};
+
+function calcStarsFor(prefix) {
   let s = 1;
-  if (document.getElementById('sdc-autonomy')?.checked)    s += 1;
-  if (document.getElementById('sdc-persistence')?.checked) s += 2;
-  if (document.getElementById('sdc-relation')?.checked)    s += 1;
+  for (const t of SDC_TYPES) {
+    if (document.getElementById(prefix + 'sdc-' + t)?.checked) s += SDC_STAR_COUNTS[t];
+  }
   return s;
 }
 
-function onSdcChange(type) {
-  if (type === 'relation') toggleRelationInput();
-  updateScore();
-  const cb = document.getElementById('sdc-' + type);
-  if (cb.checked) {
-    const msgs   = { autonomy:'스스로 결정하셨어요! 🌱', persistence:'포기하지 않으셨어요! 🌱🌱', relation:'따뜻한 마음을 나누셨어요! 🌱' };
-    const counts = { autonomy:1, persistence:2, relation:1 };
-    showPraiseToast(msgs[type], cb);
-    flyStarAnimation(cb, counts[type]);
+function updateScoreFor(prefix) {
+  const base = parseInt(document.getElementById(prefix + 'rec-base-score').value) || 80;
+  let bonus = 0;
+  for (const t of SDC_TYPES) {
+    if (document.getElementById(prefix + 'sdc-' + t)?.checked) bonus += SDC_SCORE_BONUS;
   }
-  updateStarPreview();
+  const total = Math.min(100, base + bonus);
+  document.getElementById(prefix + 'help-level-bar').style.width = total + '%';
+  document.getElementById(prefix + 'help-level-score').textContent = total + '점';
 }
 
-function updateStarPreview() {
-  const stars = calcSessionStars();
-  const box = document.getElementById('star-preview-box');
-  const starsEl = document.getElementById('star-preview-stars');
-  const textEl  = document.getElementById('star-preview-text');
+function toggleRelationFor(prefix) {
+  const cb  = document.getElementById(prefix + 'sdc-relation');
+  const inp = document.getElementById(prefix + 'sdc-relation-input');
+  inp.style.display = cb.checked ? 'block' : 'none';
+  if (!cb.checked) inp.value = '';
+}
+
+function updateStarPreviewFor(prefix) {
+  const stars   = calcStarsFor(prefix);
+  const box     = document.getElementById(prefix + 'star-preview-box');
+  const starsEl = document.getElementById(prefix + 'star-preview-stars');
+  const textEl  = document.getElementById(prefix + 'star-preview-text');
   if (!box) return;
   box.classList.add('visible');
   starsEl.textContent = '🌱'.repeat(stars);
   textEl.textContent  = '저장 시 새싹 ' + stars + '개를 획득해요!';
 }
+
+function onSdcChangeFor(prefix, type) {
+  if (type === 'relation') toggleRelationFor(prefix);
+  updateScoreFor(prefix);
+  const cb = document.getElementById(prefix + 'sdc-' + type);
+  if (cb && cb.checked) {
+    showPraiseToast(SDC_PRAISE[type], cb);
+    flyStarAnimation(cb, SDC_STAR_COUNTS[type]);
+  }
+  updateStarPreviewFor(prefix);
+}
+
+// 로그인 모드 진입점 (기존 호출부 유지)
+function calcSessionStars()  { return calcStarsFor(''); }
+function updateStarPreview() { updateStarPreviewFor(''); }
+function onSdcChange(type)   { onSdcChangeFor('', type); }
 
 function flyStarAnimation(fromEl, count) {
   const rect = fromEl.getBoundingClientRect();
@@ -2213,55 +2231,15 @@ function selectGuestHelpLevel(btn) {
   updateGuestScore();
 }
 
-function updateGuestScore() {
-  const base = parseInt(document.getElementById('guest-rec-base-score').value) || 80;
-  let bonus = 0;
-  if (document.getElementById('guest-sdc-autonomy').checked)    bonus += 5;
-  if (document.getElementById('guest-sdc-persistence').checked) bonus += 5;
-  if (document.getElementById('guest-sdc-relation').checked)    bonus += 5;
-  const total = Math.min(100, base + bonus);
-  document.getElementById('guest-help-level-bar').style.width = total + '%';
-  document.getElementById('guest-help-level-score').textContent = total + '점';
-}
+function updateGuestScore() { updateScoreFor('guest-'); }
 
-function calcGuestSessionStars() {
-  let s = 1;
-  if (document.getElementById('guest-sdc-autonomy')?.checked)    s += 1;
-  if (document.getElementById('guest-sdc-persistence')?.checked) s += 2;
-  if (document.getElementById('guest-sdc-relation')?.checked)    s += 1;
-  return s;
-}
+function calcGuestSessionStars() { return calcStarsFor('guest-'); }
 
-function toggleGuestRelationInput() {
-  const cb  = document.getElementById('guest-sdc-relation');
-  const inp = document.getElementById('guest-sdc-relation-input');
-  inp.style.display = cb.checked ? 'block' : 'none';
-  if (!cb.checked) inp.value = '';
-}
+function toggleGuestRelationInput() { toggleRelationFor('guest-'); }
 
-function onGuestSdcChange(type) {
-  if (type === 'relation') toggleGuestRelationInput();
-  updateGuestScore();
-  const cb = document.getElementById('guest-sdc-' + type);
-  if (cb.checked) {
-    const msgs   = { autonomy:'스스로 결정하셨어요! 🌱', persistence:'포기하지 않으셨어요! 🌱🌱', relation:'따뜻한 마음을 나누셨어요! 🌱' };
-    const counts = { autonomy:1, persistence:2, relation:1 };
-    showPraiseToast(msgs[type], cb);
-    flyStarAnimation(cb, counts[type]);
-  }
-  updateGuestStarPreview();
-}
+function onGuestSdcChange(type) { onSdcChangeFor('guest-', type); }
 
-function updateGuestStarPreview() {
-  const stars = calcGuestSessionStars();
-  const box = document.getElementById('guest-star-preview-box');
-  const starsEl = document.getElementById('guest-star-preview-stars');
-  const textEl  = document.getElementById('guest-star-preview-text');
-  if (!box) return;
-  box.classList.add('visible');
-  starsEl.textContent = '🌱'.repeat(stars);
-  textEl.textContent  = '저장 시 새싹 ' + stars + '개를 획득해요!';
-}
+function updateGuestStarPreview() { updateStarPreviewFor('guest-'); }
 
 function generateGuestRecord() {
   const name = document.getElementById('guest-senior-name').value.trim();
