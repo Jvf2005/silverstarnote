@@ -2382,6 +2382,11 @@ function pickMatSerial(sorted, usedInCycle) {
   return sorted[0];
 }
 
+// ── 교재 준비 여부 단일 판정 ──────────────────────────────────────────────────
+// is_ready === true 만 '준비됨'. 미설정(null/undefined)·false 는 모두 '준비 안 됨'으로 본다.
+// (자동 생성·활동 상세와 동일한 기준으로 통일 → 미설정 교재의 수동 배정까지 차단)
+function isMatReady(m) { return !!(m && m.is_ready === true); }
+
 // ── 도메인 시퀀스 생성 (고정 간격 + 충돌 해결) ────────────────────────────────
 function buildDomainSequenceFixed(numDays) {
   // 우선순위: 지남력 > 기억력 > 집행기능 > 언어기능 > 주의력 > 시공간기능
@@ -2483,7 +2488,7 @@ function generateMonthSchedule(year, month) {
   const byDomain = {};
   DOMAIN_ORDER.forEach(d => {
     byDomain[d] = _calMats
-      .filter(m => m.domain === d && m.is_ready === true)
+      .filter(m => m.domain === d && isMatReady(m))
       .sort((a, b) => (a.set_no || 0) - (b.set_no || 0));
   });
 
@@ -2778,7 +2783,7 @@ function renderCalCells() {
       if (plan.topic) content += '<div style="font-size:10px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;">' + plan.topic + '</div>';
     }
 
-    const notReady = matInfo && matInfo.is_ready === false;
+    const notReady = matInfo && !isMatReady(matInfo);
     const icons = (plan && plan.is_changed ? '✏️' : '') + (notReady ? '⏳' : '');
     if (icons) content += '<div class="cal-icons">' + icons + '</div>';
 
@@ -2896,12 +2901,12 @@ async function loadMatActivities(setNo) {
       // code_a/b/c 컬럼 방식 우선, 없으면 level+ssn 방식
       const first = actRows[0];
       if (first.code_a !== undefined) {
-        return { a: first.code_a, b: first.code_b, c: first.code_c, isReady: first.is_ready, domain: first.domain, topic: first.topic };
+        return { a: first.code_a, b: first.code_b, c: first.code_c, isReady: isMatReady(first), domain: first.domain, topic: first.topic };
       }
       const byLv = {};
       actRows.forEach(r => { byLv[r.level] = r; });
       const rep = byLv['A'] || actRows[0];
-      return { a: byLv['A']?.ssn, b: byLv['B']?.ssn, c: byLv['C']?.ssn, isReady: rep.is_ready, domain: rep.domain, topic: rep.topic };
+      return { a: byLv['A']?.ssn, b: byLv['B']?.ssn, c: byLv['C']?.ssn, isReady: isMatReady(rep), domain: rep.domain, topic: rep.topic };
     }
 
     let html = '<div class="mp-act-panel">';
@@ -2980,7 +2985,7 @@ async function clickCalDate(dateStr) {
       if (error) throw error;
       const mat = data && data[0] ? data[0] : null;
       if (!mat) { document.getElementById('mp-why').textContent = '등록된 교재가 없습니다.'; return null; }
-      if (mat.is_ready === false) {
+      if (!isMatReady(mat)) {
         document.getElementById('mp-why').textContent = '';
         document.getElementById('mp-not-ready').style.display = 'block';
       } else {
@@ -3115,7 +3120,7 @@ function renderMatSearchResults() {
   }
 
   list.innerHTML = filtered.map(m => {
-    const notReady = m.is_ready === false;
+    const notReady = !isMatReady(m);
     const readyBadge = notReady
       ? ' <span style="background:#e5e7eb;color:#6b7280;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;margin-left:6px;">준비 중</span>'
       : '';
@@ -3132,7 +3137,7 @@ function assignMaterial(ssn) {
   const mat = _calMats.find(m => m.ssn === ssn);
   if (!mat) return;
 
-  if (mat.is_ready === false) {
+  if (!isMatReady(mat)) {
     alert('아직 준비 중인 교재입니다. 다른 교재를 선택해주세요.');
     return;
   }
