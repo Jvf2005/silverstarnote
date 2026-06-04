@@ -1185,7 +1185,6 @@ function demoBlocked() {
 
 // ── UTILS ────────────────────────────────────────────────────────────────────
 function genId(p)    { return p + '-' + Math.random().toString(36).substr(2,8).toUpperCase(); }
-function genInvite() { return 'INV-' + Math.random().toString(36).substr(2,6).toUpperCase(); }
 function showAlert(el, msg) { el.textContent = msg; el.classList.add('visible'); }
 // DB 저장은 UTC 유지, 화면 표시만 KST(Asia/Seoul, UTC+9) 변환
 const _KST_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }); // YYYY-MM-DD
@@ -1240,7 +1239,7 @@ function showCenterReg() {
   document.getElementById('creg-s3').style.display = 'none';
   ['cs1-dot','cs2-dot','cs3-dot'].forEach((id,i) => document.getElementById(id).className = i===0?'step active':'step');
   ['cs-line1','cs-line2'].forEach(id => document.getElementById(id).className = 'step-line');
-  _creg = {}; _vcode = '';
+  _creg = {};
   showScreen('s-center-reg');
 }
 function showMemberReg() {
@@ -1316,7 +1315,7 @@ async function goToDashboard() {
 }
 
 // ── CENTER REGISTRATION ──────────────────────────────────────────────────────
-var _creg = {}, _vcode = '';
+var _creg = {};
 
 async function cregStep1Next() {
   const cname = document.getElementById('creg-cname').value.trim();
