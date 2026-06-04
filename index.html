@@ -2776,7 +2776,13 @@ async function ensureSchedulesLoaded(year, month) {
     const count = await loadSchedulesForMonth(year, month);
     console.log('[schedule] loaded', count, 'rows for', year, month+1, '| mats:', _calMats.length);
 
-    if (count === 0 && _calMats.length > 0) {
+    // 그 달의 수업일 중 스케줄이 없는 날이 하나라도 있으면 생성(빈칸 메우기).
+    // 마이그레이션으로 '오늘 이후'만 삭제돼 과거분만 남은 현재 달처럼, 일부만 채워진 달도
+    // 다시 채워지도록 한다. (기존 count===0 조건은 월 전체가 비어야만 생성되어 빈칸을 못 메웠음)
+    const workDaysThis = getWorkingDays(year, month);
+    const missingThis  = workDaysThis.filter(d => !_calPlan[d]);
+
+    if (missingThis.length > 0 && _calMats.length > 0) {
       const nextD = new Date(year, month + 1, 1);
       const thisRows = generateMonthSchedule(year, month);
       const nextRows = generateMonthSchedule(nextD.getFullYear(), nextD.getMonth());
