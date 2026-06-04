@@ -738,6 +738,7 @@
   <div class="guest-header">
     <div class="guest-logo">🌟 실버스타노트</div>
     <div style="display:flex;gap:8px;">
+      <button class="btn-auth-link" onclick="doDemoLogin()" style="background:#eef2ff;color:#1e40af;border-color:#c7d2fe;font-weight:700;">🌟 데모 체험</button>
       <button class="btn-auth-link" onclick="showScreen('s-login')">로그인</button>
       <button class="btn-auth-link" onclick="showCenterReg()">회원가입</button>
     </div>
@@ -1272,6 +1273,17 @@ async function doLogin() {
     await goToDashboard();
   } catch(e) { dbErr(al, e); }
   finally    { setBtnLoading('login-btn', false); }
+}
+
+// 데모 원클릭 로그인 (공개 체험 계정 · RLS로 읽기 전용 보장)
+async function doDemoLogin() {
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email: 'demo@silverstarnote.com', password: 'silverstar' });
+    if (error) { alert('데모 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.'); console.error(error); return; }
+    const s = await loadSession();
+    if (!s) { await sb.auth.signOut(); alert('데모 계정 정보를 불러오지 못했습니다.'); return; }
+    await goToDashboard();
+  } catch(e) { alert('데모 로그인 중 오류가 발생했습니다.'); console.error(e); }
 }
 
 async function doLogout() {
