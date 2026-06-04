@@ -941,6 +941,10 @@
         <div class="senior-detail-row"><span class="senior-detail-key">요양등급</span><span class="senior-detail-val" id="sd-grade"></span></div>
         <div class="senior-detail-row"><span class="senior-detail-key">특이사항</span><span class="senior-detail-val" id="sd-notes"></span></div>
       </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button class="btn-secondary" onclick="printSeniorReportElder()" style="flex:1;font-size:14px;">🖨 어르신용 리포트</button>
+        <button class="btn-secondary" onclick="printSeniorReport()" style="flex:1;font-size:14px;">🖨 전문가용 리포트</button>
+      </div>
       <div class="sd-tabs">
         <div class="sd-tab active" id="sd-tab-track1" onclick="switchDetailTab('track1')">📊 수행 기록</div>
         <div class="sd-tab" id="sd-tab-track2" onclick="switchDetailTab('track2')">⭐ 성장 여정</div>
@@ -2020,6 +2024,159 @@ function printCertificate(seniorName, stars, trees) {
     +'<div class="date">'+dateStr+'</div>'
     +'<div class="org">🌟 실버스타노트</div>'
     +'</div><script>setTimeout(()=>window.print(),500);<\/script></body></html>');
+  w.document.close();
+}
+
+// 어르신 성장 리포트 (A4 인쇄/ PDF 저장). 읽기 전용이라 데모 포함 누구나 사용 가능.
+async function printSeniorReport() {
+  const senior = _detailSenior;
+  if (!senior) return;
+  let recs = [];
+  try { recs = await dbAll('records', { senior_id: senior.senior_id }); }
+  catch(e) { alert('기록을 불러오지 못했습니다.'); console.error(e); return; }
+  recs.sort((a,b) => b.created_at.localeCompare(a.created_at));
+
+  const sprouts = senior.total_stars || 0;
+  const trees   = senior.total_constellations || 0;
+  const stars   = parseInt(senior.current_medal) || 0;
+
+  const scores = extractSnsbScores(recs);
+  const radar  = radarSVG(scores, false);
+
+  // 영역별 활동 횟수
+  const counts = SNSB_DOMAINS.map(d => ({ label:d.label, n: recs.filter(r => r.domain && r.domain.includes(d.match)).length }));
+  const maxN = Math.max(1, ...counts.map(c => c.n));
+  const barsHtml = counts.map(c =>
+    '<div class="dom-row"><div class="dom-label">'+c.label+'</div>'+
+    '<div class="dom-track"><div class="dom-bar" style="width:'+Math.round(c.n/maxN*100)+'%"></div></div>'+
+    '<div class="dom-n">'+c.n+'회</div></div>').join('');
+
+  // 최근 기록
+  const recentHtml = recs.slice(0,10).map(r => {
+    const t = (r.text||''); const tt = t.length>90 ? t.slice(0,90)+'…' : t;
+    return '<tr><td class="rc-date">'+fmtDate(r.created_at)+'</td><td><span class="rc-dom">'+(r.domain||'')+'</span></td><td class="rc-text">'+tt+'</td></tr>';
+  }).join('');
+
+  // 요양등급 (상세 화면과 동일 규칙)
+  const gk = 'care_grades_' + (getSession()?.center_id || '');
+  const gmap = JSON.parse(localStorage.getItem(gk) || '{}');
+  const graw = gmap[senior.senior_id] || senior.care_grade || '';
+  const gradeStr = graw ? (graw==='인지지원' ? '인지지원등급' : (String(graw).includes('등급') ? graw : graw+'등급')) : '미설정';
+
+  const startStr = senior.season_start_date ? senior.season_start_date.replace(/-/g,'.') : '—';
+  const ageStr   = '만 ' + calcAge(senior.birth_year ?? senior.birth_date) + '세';
+  const genderStr= senior.gender==='m' ? '남성' : '여성';
+  const dateStr  = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Seoul'});
+
+  const w = window.open('', '_blank');
+  w.document.write(
+    '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>'+senior.name+' 어르신 성장 리포트</title><style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#1f2937;background:#f3f4f6;padding:24px}'
+    +'.page{max-width:780px;margin:0 auto;background:#fff;padding:40px 44px;box-shadow:0 4px 24px rgba(0,0,0,.1)}'
+    +'.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1e40af;padding-bottom:14px;margin-bottom:20px}'
+    +'.logo{font-size:20px;font-weight:800;color:#1e40af}.head .sub{font-size:13px;color:#6b7280;margin-top:2px}'
+    +'.head .date{font-size:12px;color:#9ca3af}'
+    +'.title{font-size:24px;font-weight:800;margin-bottom:4px}.title .nm{color:#1e40af}'
+    +'.info{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:13px;color:#374151;margin:10px 0 24px}'
+    +'.info b{color:#111;font-weight:600}'
+    +'.cards{display:flex;gap:12px;margin-bottom:26px}'
+    +'.card{flex:1;text-align:center;border:1px solid #e5e7eb;border-radius:12px;padding:16px 8px;background:#fafafa}'
+    +'.card .ic{font-size:28px}.card .v{font-size:24px;font-weight:800;color:#1e40af;margin-top:4px}.card .l{font-size:12px;color:#6b7280;margin-top:2px}'
+    +'.sec{font-size:15px;font-weight:700;color:#1e40af;margin:22px 0 10px;border-left:4px solid #1e40af;padding-left:8px}'
+    +'.flex{display:flex;gap:24px;align-items:center}.flex>.radar{flex:0 0 270px}.flex>.bars{flex:1}'
+    +'.dom-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px}'
+    +'.dom-label{flex:0 0 64px;color:#374151}.dom-track{flex:1;height:14px;background:#eef2f7;border-radius:7px;overflow:hidden}'
+    +'.dom-bar{height:100%;background:#2563eb;border-radius:7px}.dom-n{flex:0 0 36px;text-align:right;color:#6b7280}'
+    +'table{width:100%;border-collapse:collapse;font-size:12.5px}'
+    +'th,td{text-align:left;padding:7px 8px;border-bottom:1px solid #f0f0f0;vertical-align:top}'
+    +'th{background:#f8fafc;color:#6b7280;font-weight:600;font-size:12px}'
+    +'.rc-date{white-space:nowrap;color:#6b7280;width:88px}.rc-dom{background:#eef2ff;color:#1e40af;border-radius:6px;padding:2px 8px;font-size:11px;white-space:nowrap}'
+    +'.foot{margin-top:28px;padding-top:14px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center}'
+    +'@media print{body{background:#fff;padding:0}.page{box-shadow:none;max-width:none;padding:24px}}'
+    +'</style></head><body><div class="page">'
+    +'<div class="head"><div><div class="logo">🌟 실버스타노트</div><div class="sub">인지활동 성장 리포트</div></div><div class="date">발행일 '+dateStr+'</div></div>'
+    +'<div class="title"><span class="nm">'+senior.name+'</span> 어르신 성장 리포트</div>'
+    +'<div class="info"><span><b>'+ageStr+'</b></span><span>'+genderStr+'</span><span>요양등급 <b>'+gradeStr+'</b></span><span>참여 시작 <b>'+startStr+'</b></span><span>총 기록 <b>'+recs.length+'회</b></span></div>'
+    +'<div class="cards">'
+    +'<div class="card"><div class="ic">🌱</div><div class="v">'+sprouts+'</div><div class="l">새싹</div></div>'
+    +'<div class="card"><div class="ic">🌳</div><div class="v">'+trees+'</div><div class="l">나무 (그루)</div></div>'
+    +'<div class="card"><div class="ic">⭐</div><div class="v">'+stars+'</div><div class="l">별 (개)</div></div>'
+    +'</div>'
+    +'<div class="sec">📊 인지 6영역 프로파일</div>'
+    +'<div class="flex"><div class="radar">'+radar+'</div><div class="bars">'+barsHtml+'</div></div>'
+    +'<div class="sec">📋 최근 관찰 기록</div>'
+    +(recs.length ? '<table><thead><tr><th>날짜</th><th>영역</th><th>관찰 내용</th></tr></thead><tbody>'+recentHtml+'</tbody></table>'
+                  : '<div style="color:#9ca3af;font-size:13px;padding:8px 0;">아직 관찰 기록이 없습니다.</div>')
+    +'<div class="foot">본 리포트는 실버스타노트 인지활동 기록을 바탕으로 자동 생성되었습니다. · 🌟 실버스타노트</div>'
+    +'</div><script>setTimeout(function(){window.print();},600);<\/script></body></html>'
+  );
+  w.document.close();
+}
+
+// 어르신용 리포트 — 본인이 통제 가능한 지표(새싹·나무·별·참여)만. 인지점수·레이더 제외.
+async function printSeniorReportElder() {
+  const senior = _detailSenior;
+  if (!senior) return;
+  let recs = [];
+  try { recs = await dbAll('records', { senior_id: senior.senior_id }); }
+  catch(e) { alert('기록을 불러오지 못했습니다.'); console.error(e); return; }
+  recs.sort((a,b) => b.created_at.localeCompare(a.created_at));
+
+  const sprouts = senior.total_stars || 0;
+  const trees   = senior.total_constellations || 0;
+  const stars   = parseInt(senior.current_medal) || 0;
+
+  let cheer;
+  if (stars >= 1)        cheer = '별을 '+stars+'개나 받으셨어요!<br>꾸준히 참여하신 정말 자랑스러운 결과랍니다. 앞으로도 함께해요! 🌟';
+  else if (trees >= 1)   cheer = '나무를 '+trees+'그루나 키우셨어요!<br>한 걸음씩 쌓인 노력이 멋진 숲을 만들고 있어요. 🌳';
+  else if (sprouts >= 1) cheer = '새싹이 '+sprouts+'개나 자랐어요!<br>꾸준함이 가장 큰 힘이랍니다. 계속 키워가요. 🌱';
+  else                   cheer = '함께해 주셔서 고맙습니다.<br>작은 참여가 큰 성장의 시작이에요! 🌱';
+
+  // 참여한 활동 (점수 없이 — 주제 + 그날 받은 새싹만)
+  const acts = recs.slice(0,12).map(r => {
+    const name = r.topic || r.task_type || r.domain || '활동';
+    const sp = Math.max(0, Math.min(r.stars || 0, 5));
+    return '<li><span class="ad">'+fmtDate(r.created_at)+'</span><span class="an">'+name+'</span><span class="sp">'+'🌱'.repeat(sp)+'</span></li>';
+  }).join('');
+
+  const startStr = senior.season_start_date ? senior.season_start_date.replace(/-/g,'.') : '—';
+  const dateStr  = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',timeZone:'Asia/Seoul'});
+
+  const w = window.open('', '_blank');
+  w.document.write(
+    '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>'+senior.name+' 어르신 성장 이야기</title><style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#1f2937;background:#fffdf7;padding:24px}'
+    +'.page{max-width:720px;margin:0 auto;background:#fff;padding:44px 48px;border:3px solid #fcd34d;border-radius:18px;box-shadow:0 4px 24px rgba(0,0,0,.08)}'
+    +'.logo{text-align:center;font-size:22px;font-weight:800;color:#1e40af;margin-bottom:6px}'
+    +'.title{text-align:center;font-size:30px;font-weight:800;margin:10px 0 4px}.title .nm{color:#d97706}'
+    +'.subtitle{text-align:center;font-size:16px;color:#6b7280;margin-bottom:26px}'
+    +'.cards{display:flex;gap:14px;margin:24px 0}'
+    +'.card{flex:1;text-align:center;border-radius:16px;padding:22px 8px;background:#f8fafc;border:2px solid #e5e7eb}'
+    +'.card .ic{font-size:44px}.card .v{font-size:38px;font-weight:800;color:#16a34a;margin-top:6px}.card .l{font-size:16px;color:#374151;margin-top:4px;font-weight:600}'
+    +'.cheer{text-align:center;font-size:19px;line-height:1.8;color:#92400e;background:#fffbeb;border-radius:14px;padding:22px;margin:24px 0}'
+    +'.meta{text-align:center;font-size:15px;color:#6b7280;margin:16px 0 28px}.meta b{color:#111}'
+    +'.sec{font-size:18px;font-weight:700;color:#1e40af;margin:24px 0 12px}'
+    +'ul{list-style:none}li{display:flex;align-items:center;gap:12px;font-size:16px;padding:11px 6px;border-bottom:1px solid #f3f4f6}'
+    +'.ad{color:#6b7280;font-size:14px;white-space:nowrap;flex:0 0 96px}.an{flex:1;color:#1f2937}.sp{white-space:nowrap;font-size:15px}'
+    +'.foot{margin-top:30px;padding-top:16px;border-top:1px solid #f0e6c8;font-size:13px;color:#b45309;text-align:center;line-height:1.7}'
+    +'@media print{body{background:#fff;padding:0}.page{box-shadow:none;max-width:none}}'
+    +'</style></head><body><div class="page">'
+    +'<div class="logo">🌟 실버스타노트</div>'
+    +'<div class="title"><span class="nm">'+senior.name+'</span> 어르신의 성장 이야기</div>'
+    +'<div class="subtitle">그동안의 노력으로 이만큼 자랐어요</div>'
+    +'<div class="cards">'
+    +'<div class="card"><div class="ic">🌱</div><div class="v">'+sprouts+'</div><div class="l">새싹</div></div>'
+    +'<div class="card"><div class="ic">🌳</div><div class="v">'+trees+'</div><div class="l">나무</div></div>'
+    +'<div class="card"><div class="ic">⭐</div><div class="v">'+stars+'</div><div class="l">별</div></div>'
+    +'</div>'
+    +'<div class="cheer">'+cheer+'</div>'
+    +'<div class="meta">'+startStr+'부터 함께 · 모두 <b>'+recs.length+'번</b> 활동에 참여하셨어요</div>'
+    +(recs.length ? '<div class="sec">🎨 함께한 활동들</div><ul>'+acts+'</ul>' : '')
+    +'<div class="foot">참 잘하셨어요! 오늘도 건강한 하루 보내세요. 🌷<br>🌟 실버스타노트</div>'
+    +'</div><script>setTimeout(function(){window.print();},600);<\/script></body></html>'
+  );
   w.document.close();
 }
 
