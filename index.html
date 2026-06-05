@@ -2798,6 +2798,21 @@ async function ensureSchedulesLoaded(year, month) {
     const workDaysThis = getWorkingDays(year, month);
     const missingThis  = workDaysThis.filter(d => !_calPlan[d]);
 
+    // 데모 계정은 읽기 전용이라 DB 저장(insert)이 RLS로 막힌다. 따로 만들지 않고, 로그인 때와
+    // 똑같은 생성 로직으로 만든 스케줄을 '메모리에만' 채워 동일하게 보이게 한다.
+    // (저장하지 않으므로 읽기 전용 유지 · 방문 시기와 무관하게 항상 현재 달이 채워짐)
+    if (getSession()?.is_demo) {
+      if (missingThis.length > 0 && _calMats.length > 0) {
+        const nextD = new Date(year, month + 1, 1);
+        const gen = [...generateMonthSchedule(year, month),
+                     ...generateMonthSchedule(nextD.getFullYear(), nextD.getMonth())];
+        gen.forEach(r => { if (!_calPlan[r.date]) _calPlan[r.date] = r; });
+        _calSchedulesLoaded.add(nextD.getFullYear() + '-' + nextD.getMonth());
+      }
+      _calSchedulesLoaded.add(key);
+      return;
+    }
+
     if (missingThis.length > 0 && _calMats.length > 0) {
       const nextD = new Date(year, month + 1, 1);
       const thisRows = generateMonthSchedule(year, month);
