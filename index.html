@@ -1054,6 +1054,37 @@
   </div>
 </div>
 
+<div id="modal-mat-review" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">📝 교재 리뷰</div>
+        <div class="modal-subtitle" id="mr-info">선택사항 — 입력하지 않고 닫아도 됩니다</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-mat-review')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:#374151;font-weight:600;margin-bottom:6px;">이 교재는 어떠셨나요?</div>
+      <div id="mr-stars" style="font-size:34px;letter-spacing:6px;cursor:pointer;margin-bottom:18px;color:#fbbf24;line-height:1;">
+        <span onclick="mrSetRating(1)">☆</span><span onclick="mrSetRating(2)">☆</span><span onclick="mrSetRating(3)">☆</span><span onclick="mrSetRating(4)">☆</span><span onclick="mrSetRating(5)">☆</span>
+      </div>
+      <div style="font-size:13px;color:#374151;font-weight:600;margin-bottom:8px;">해당하는 항목을 선택해주세요</div>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;"><input type="checkbox" class="mr-chk" value="난이도가 적절했어요" style="width:16px;height:16px;accent-color:#2563eb;"> 난이도가 적절했어요</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;"><input type="checkbox" class="mr-chk" value="이야기·활동 주제가 풍부했어요" style="width:16px;height:16px;accent-color:#2563eb;"> 이야기·활동 주제가 풍부했어요</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;"><input type="checkbox" class="mr-chk" value="교사 가이드가 도움됐어요" style="width:16px;height:16px;accent-color:#2563eb;"> 교사 가이드가 도움됐어요</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;"><input type="checkbox" class="mr-chk" value="다시 사용하고 싶어요" style="width:16px;height:16px;accent-color:#2563eb;"> 다시 사용하고 싶어요</label>
+      </div>
+      <div style="font-size:13px;color:#374151;font-weight:600;margin-bottom:6px;">한 줄 메모 (선택)</div>
+      <textarea id="mr-memo" rows="2" placeholder="자유롭게 남겨주세요" style="width:100%;border:1px solid #d1d5db;border-radius:8px;padding:9px 11px;font-size:14px;resize:vertical;font-family:inherit;margin-bottom:16px;box-sizing:border-box;"></textarea>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-sm btn-sm-ghost" onclick="closeModal('modal-mat-review')" style="flex:1;">건너뛰기</button>
+        <button class="btn-sm btn-sm-primary" onclick="submitMatReview()" style="flex:1;">리뷰 저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════════════════ MODAL: 교재 검색 ═══════════════════════════════ -->
 <div id="modal-mat-search" class="modal-overlay">
   <div class="modal-card modal-wide">
@@ -3241,6 +3272,57 @@ function mpToggleComplete(checked) {
   updateScheduleRow(_calSelDate, {is_completed: checked});
   renderCalCells();
   renderDomainChart();
+  // 완료 표시 + 자체 교재(SSN 보유)면 교재 리뷰 팝업(선택). 데모는 제외.
+  if (checked && _calPlan[_calSelDate].ssn && !getSession()?.is_demo) openMatReview();
+}
+
+// ── 교재 리뷰 (자체 교재 한정 · 선택 입력) ───────────────────────────────────
+var _mrRating = 0;
+
+function openMatReview() {
+  const plan = _calPlan[_calSelDate];
+  if (!plan || !plan.ssn) return;          // 자체 교재(SSN)만 대상
+  _mrRating = 0;
+  document.querySelectorAll('#mr-stars span').forEach(s => s.textContent = '☆');
+  document.querySelectorAll('.mr-chk').forEach(c => c.checked = false);
+  document.getElementById('mr-memo').value = '';
+  document.getElementById('mr-info').textContent =
+    (plan.topic || plan.domain || '교재') + ' · 선택사항 — 닫아도 됩니다';
+  openModal('modal-mat-review');
+}
+
+function mrSetRating(n) {
+  _mrRating = n;
+  document.querySelectorAll('#mr-stars span').forEach((s, i) => s.textContent = (i < n) ? '★' : '☆');
+}
+
+async function submitMatReview() {
+  if (demoBlocked()) { closeModal('modal-mat-review'); return; }
+  const plan = _calPlan[_calSelDate];
+  const session = getSession();
+  if (!plan || !session) { closeModal('modal-mat-review'); return; }
+
+  const checklist = Array.from(document.querySelectorAll('.mr-chk:checked')).map(c => c.value);
+  const memo = document.getElementById('mr-memo').value.trim();
+
+  // 아무것도 입력 안 했으면 빈 리뷰는 저장하지 않고 그냥 닫음
+  if (!_mrRating && checklist.length === 0 && !memo) { closeModal('modal-mat-review'); return; }
+
+  try {
+    await dbInsert('material_reviews', {
+      center_id: session.center_id,
+      ssn: plan.ssn, domain: plan.domain || null, type: plan.type || null, topic: plan.topic || null,
+      schedule_date: _calSelDate,
+      rating: _mrRating || null,
+      checklist: checklist,
+      memo: memo || null,
+      user_id: session.user_id, user_name: session.name || null,
+    });
+    closeModal('modal-mat-review');
+  } catch(e) {
+    alert('리뷰 저장에 실패했습니다.');
+    console.error(e);
+  }
 }
 
 // ── Material search ────────────────────────────────────────────────────────────
