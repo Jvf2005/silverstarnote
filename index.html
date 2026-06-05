@@ -1064,19 +1064,7 @@
       <button class="modal-close" onclick="closeModal('modal-mat-review')">✕</button>
     </div>
     <div class="modal-body">
-      <div style="font-size:13px;color:#374151;font-weight:600;margin-bottom:6px;">이 교재는 어떠셨나요?</div>
-      <div id="mr-stars" style="font-size:34px;letter-spacing:6px;cursor:pointer;margin-bottom:18px;color:#fbbf24;line-height:1;">
-        <span onclick="mrSetRating(1)">☆</span><span onclick="mrSetRating(2)">☆</span><span onclick="mrSetRating(3)">☆</span><span onclick="mrSetRating(4)">☆</span><span onclick="mrSetRating(5)">☆</span>
-      </div>
-      <div style="font-size:13px;color:#374151;font-weight:600;margin-bottom:8px;">해당하는 항목을 선택해주세요</div>
-      <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:16px;">
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;"><input type="checkbox" class="mr-chk" value="난이도가 적절했어요" style="width:16px;height:16px;accent-color:#2563eb;"> 난이도가 적절했어요</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;"><input type="checkbox" class="mr-chk" value="이야기·활동 주제가 풍부했어요" style="width:16px;height:16px;accent-color:#2563eb;"> 이야기·활동 주제가 풍부했어요</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;"><input type="checkbox" class="mr-chk" value="교사 가이드가 도움됐어요" style="width:16px;height:16px;accent-color:#2563eb;"> 교사 가이드가 도움됐어요</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;"><input type="checkbox" class="mr-chk" value="다시 사용하고 싶어요" style="width:16px;height:16px;accent-color:#2563eb;"> 다시 사용하고 싶어요</label>
-      </div>
-      <div style="font-size:13px;color:#374151;font-weight:600;margin-bottom:6px;">한 줄 메모 (선택)</div>
-      <textarea id="mr-memo" rows="2" placeholder="자유롭게 남겨주세요" style="width:100%;border:1px solid #d1d5db;border-radius:8px;padding:9px 11px;font-size:14px;resize:vertical;font-family:inherit;margin-bottom:16px;box-sizing:border-box;"></textarea>
+      <div id="mr-acts"></div>
       <div style="display:flex;gap:8px;">
         <button class="btn-sm btn-sm-ghost" onclick="closeModal('modal-mat-review')" style="flex:1;">건너뛰기</button>
         <button class="btn-sm btn-sm-primary" onclick="submitMatReview()" style="flex:1;">리뷰 저장</button>
@@ -3276,24 +3264,83 @@ function mpToggleComplete(checked) {
   if (checked && _calPlan[_calSelDate].ssn && !getSession()?.is_demo) openMatReview();
 }
 
-// ── 교재 리뷰 (자체 교재 한정 · 선택 입력) ───────────────────────────────────
-var _mrRating = 0;
+// ── 교재 리뷰 (자체 교재 한정 · 활동별 · 선택 입력) ──────────────────────────
+// 집계 키 = 유형코드(영역+유형번호) + 시리얼  (난이도 A/B/C만 합치고 시리얼은 분리)
+var _mrActs = [];   // [{activity_no, type_code, serial, topic, domain, ssn, rating}]
 
-function openMatReview() {
-  const plan = _calPlan[_calSelDate];
-  if (!plan || !plan.ssn) return;          // 자체 교재(SSN)만 대상
-  _mrRating = 0;
-  document.querySelectorAll('#mr-stars span').forEach(s => s.textContent = '☆');
-  document.querySelectorAll('.mr-chk').forEach(c => c.checked = false);
-  document.getElementById('mr-memo').value = '';
-  document.getElementById('mr-info').textContent =
-    (plan.topic || plan.domain || '교재') + ' · 선택사항 — 닫아도 됩니다';
-  openModal('modal-mat-review');
+function _ssnParts(code) {
+  let p = parseSsnV9(code);
+  if (!p) { const v = ssnV8toV9(code); if (v) p = parseSsnV9(v); }
+  return p; // {area, typeNum, level, serial} | null
 }
 
-function mrSetRating(n) {
-  _mrRating = n;
-  document.querySelectorAll('#mr-stars span').forEach((s, i) => s.textContent = (i < n) ? '★' : '☆');
+// 그날 세트의 활동①②를 해석해 리뷰 단위 정보로 반환
+async function getDayActivities(setNo, fallbackSsn) {
+  const out = [];
+  if (setNo != null) {
+    try {
+      const { data } = await sb.from('materials').select('*').eq('set_no', setNo);
+      const byAct = {};
+      (data||[]).forEach(r => { const k = String(r.activity_no); (byAct[k] = byAct[k] || []).push(r); });
+      ['1','2'].forEach(no => {
+        const ar = byAct[no]; if (!ar || !ar.length) return;
+        const first = ar[0];
+        let repSsn;
+        if (first.code_a !== undefined) repSsn = first.code_a;          // code_a/b/c 컬럼 방식
+        else { const aRow = ar.find(r => r.level === 'A') || ar[0]; repSsn = aRow.ssn; }  // level별 방식
+        const pp = _ssnParts(repSsn);
+        out.push({
+          activity_no: parseInt(no),
+          type_code: pp ? (pp.area + pp.typeNum) : null,
+          serial:    pp ? pp.serial : null,
+          topic:     first.topic || null,
+          domain:    first.domain || null,
+          ssn:       repSsn || null,
+          rating:    0,
+        });
+      });
+    } catch(e) { console.error('[review] getDayActivities:', e); }
+  }
+  if (!out.length && fallbackSsn) {   // 세트 해석 실패 시 단일 교재로라도 리뷰
+    const pp = _ssnParts(fallbackSsn);
+    const plan = _calPlan[_calSelDate] || {};
+    out.push({ activity_no: 1, type_code: pp ? (pp.area + pp.typeNum) : null, serial: pp ? pp.serial : null,
+               topic: plan.topic || null, domain: plan.domain || null, ssn: fallbackSsn, rating: 0 });
+  }
+  return out;
+}
+
+async function openMatReview() {
+  const plan = _calPlan[_calSelDate];
+  if (!plan || !plan.ssn) return;          // 자체 교재(SSN)만 대상
+  const cont = document.getElementById('mr-acts');
+  document.getElementById('mr-info').textContent = '활동별로 평가해주세요 · 선택사항';
+  cont.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:10px 4px;">교재 정보를 불러오는 중…</div>';
+  openModal('modal-mat-review');
+
+  _mrActs = await getDayActivities(plan.set_no, plan.ssn);
+  if (!_mrActs.length) { cont.innerHTML = '<div style="color:#9ca3af;font-size:13px;padding:10px 4px;">교재 정보를 찾을 수 없습니다.</div>'; return; }
+
+  const labels = {1:'활동①', 2:'활동②'};
+  cont.innerHTML = _mrActs.map((a, idx) => {
+    const head = (labels[a.activity_no] || '활동') + (a.type_code ? ' · ' + a.type_code : '') + (a.serial ? '-' + a.serial : '');
+    const sub  = [a.domain, a.topic].filter(Boolean).join(' · ');
+    let stars = '';
+    for (let n=1; n<=5; n++) stars += '<span onclick="mrSetRating('+idx+','+n+')">☆</span>';
+    return '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:14px;">'
+      + '<div style="font-size:14px;font-weight:700;color:#111;">' + head + '</div>'
+      + (sub ? '<div style="font-size:12px;color:#6b7280;margin-top:2px;">' + sub + '</div>' : '')
+      + '<div id="mr-stars-'+idx+'" style="font-size:30px;letter-spacing:5px;cursor:pointer;color:#fbbf24;line-height:1;margin:10px 0;">' + stars + '</div>'
+      + '<input id="mr-note-'+idx+'" type="text" placeholder="개선의견 한 줄 (선택)" style="width:100%;border:1px solid #d1d5db;border-radius:8px;padding:8px 11px;font-size:14px;font-family:inherit;box-sizing:border-box;">'
+      + '</div>';
+  }).join('');
+}
+
+function mrSetRating(idx, n) {
+  if (!_mrActs[idx]) return;
+  _mrActs[idx].rating = n;
+  const el = document.getElementById('mr-stars-' + idx);
+  if (el) el.querySelectorAll('span').forEach((s, i) => s.textContent = (i < n) ? '★' : '☆');
 }
 
 async function submitMatReview() {
@@ -3302,22 +3349,26 @@ async function submitMatReview() {
   const session = getSession();
   if (!plan || !session) { closeModal('modal-mat-review'); return; }
 
-  const checklist = Array.from(document.querySelectorAll('.mr-chk:checked')).map(c => c.value);
-  const memo = document.getElementById('mr-memo').value.trim();
-
-  // 아무것도 입력 안 했으면 빈 리뷰는 저장하지 않고 그냥 닫음
-  if (!_mrRating && checklist.length === 0 && !memo) { closeModal('modal-mat-review'); return; }
-
-  try {
-    await dbInsert('material_reviews', {
+  const rows = [];
+  _mrActs.forEach((a, idx) => {
+    const noteEl = document.getElementById('mr-note-' + idx);
+    const note = noteEl ? noteEl.value.trim() : '';
+    if (!a.rating && !note) return;   // 비운 활동은 저장 안 함
+    rows.push({
       center_id: session.center_id,
-      ssn: plan.ssn, domain: plan.domain || null, type: plan.type || null, topic: plan.topic || null,
+      ssn: a.ssn, type_code: a.type_code, serial: a.serial, activity_no: a.activity_no,
+      domain: a.domain || null, topic: a.topic || null,
       schedule_date: _calSelDate,
-      rating: _mrRating || null,
-      checklist: checklist,
-      memo: memo || null,
+      rating: a.rating || null,
+      memo: note || null,
       user_id: session.user_id, user_name: session.name || null,
     });
+  });
+
+  if (!rows.length) { closeModal('modal-mat-review'); return; }   // 둘 다 비었으면 그냥 닫음
+
+  try {
+    for (const r of rows) await dbInsert('material_reviews', r);
     closeModal('modal-mat-review');
   } catch(e) {
     alert('리뷰 저장에 실패했습니다.');
