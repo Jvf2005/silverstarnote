@@ -566,7 +566,6 @@
     <div class="dash-logo">🌟 실버스타노트</div>
     <div class="dash-meta">
       <span id="member-center-tag"></span>
-      <span id="member-name-tag"></span>
       <button class="btn-logout" onclick="doLogout()">로그아웃</button>
     </div>
   </div>
@@ -1039,16 +1038,16 @@
       <div class="mat-preview-why" id="mp-why"></div>
       <div class="mat-preview-not-ready" id="mp-not-ready" style="display:none;">⏳ 이 교재는 현재 준비 중입니다. 수업 전에 확인해주세요.</div>
       <div id="mp-activity-detail"></div>
-      <div id="mp-completed-check" style="display:none;align-items:center;gap:8px;margin-bottom:14px;">
+      <div id="mp-past-notice" style="display:none;font-size:13px;color:#6b7280;background:#f3f4f6;padding:8px 12px;border-radius:8px;margin-bottom:4px;">지난 수업입니다. 수정할 수 없습니다.</div>
+      <div id="mp-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button id="mp-btn-start" class="btn-sm btn-sm-primary" onclick="openLessonStart()">🖨 미리보기 및 인쇄</button>
+        <button id="mp-btn-change" class="btn-sm btn-sm-ghost" onclick="closeModal('modal-mat-preview');openMatSearch()">🔄 다른 교재로 변경</button>
+      </div>
+      <div id="mp-completed-check" style="display:none;align-items:center;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid #f0f0f0;">
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;">
           <input type="checkbox" id="mp-completed-chk" onchange="mpToggleComplete(this.checked)" style="width:16px;height:16px;accent-color:#16a34a;">
           수업 완료로 표시
         </label>
-      </div>
-      <div id="mp-past-notice" style="display:none;font-size:13px;color:#6b7280;background:#f3f4f6;padding:8px 12px;border-radius:8px;margin-bottom:4px;">지난 수업입니다. 수정할 수 없습니다.</div>
-      <div id="mp-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button id="mp-btn-start" class="btn-sm btn-sm-primary" onclick="openLessonStart()">▶ 수업 시작</button>
-        <button id="mp-btn-change" class="btn-sm btn-sm-ghost" onclick="closeModal('modal-mat-preview');openMatSearch()">🔄 다른 교재로 변경</button>
       </div>
     </div>
   </div>
@@ -1342,8 +1341,7 @@ async function goToDashboard() {
     switchAdminTab('info');
     showScreen('s-admin');
   } else {
-    document.getElementById('member-center-tag').textContent = center.name;
-    document.getElementById('member-name-tag').textContent   = s.name + (s.is_demo ? ' (데모 · 둘러보기 전용)' : ' 복지사');
+    document.getElementById('member-center-tag').textContent = center.name + (s.is_demo ? ' (데모 · 둘러보기 전용)' : '');
     switchMemberTab('seniors');
     showScreen('s-member');
   }
