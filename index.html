@@ -3268,6 +3268,7 @@ function mpToggleComplete(checked) {
 // 집계 키 = 유형코드(영역+유형번호) + 시리얼  (난이도 A/B/C만 합치고 시리얼은 분리)
 var _mrActs = [];   // [{activity_no, type_code, serial, topic, domain, ssn, rating, reactions}]
 var MR_REACTIONS = ['😊 매우 즐거워함','🤔 집중했지만 어려워함','😴 흥미를 잃음','💬 이야기를 많이 나눔','🏆 뿌듯해함'];
+var MR_IMPROVEMENTS = ['글씨가 너무 작아요','그림이 너무 복잡해요','난이도 조정이 필요해요','분량이 너무 많아요','분량이 너무 적어요','설명이 부족해요'];
 
 function _ssnParts(code) {
   let p = parseSsnV9(code);
@@ -3299,6 +3300,7 @@ async function getDayActivities(setNo, fallbackSsn) {
           ssn:       repSsn || null,
           rating:    0,
           reactions: [],
+          improvements: [],
         });
       });
     } catch(e) { console.error('[review] getDayActivities:', e); }
@@ -3307,7 +3309,7 @@ async function getDayActivities(setNo, fallbackSsn) {
     const pp = _ssnParts(fallbackSsn);
     const plan = _calPlan[_calSelDate] || {};
     out.push({ activity_no: 1, type_code: pp ? (pp.area + pp.typeNum) : null, serial: pp ? pp.serial : null,
-               topic: plan.topic || null, domain: plan.domain || null, ssn: fallbackSsn, rating: 0, reactions: [] });
+               topic: plan.topic || null, domain: plan.domain || null, ssn: fallbackSsn, rating: 0, reactions: [], improvements: [] });
   }
   return out;
 }
@@ -3332,13 +3334,18 @@ async function openMatReview() {
     const tagsHtml = MR_REACTIONS.map(t =>
       '<span data-tag="'+t+'" onclick="mrToggleReaction('+idx+', this)" style="display:inline-block;padding:5px 10px;border:1px solid #d1d5db;border-radius:14px;font-size:12.5px;cursor:pointer;background:#fff;color:#374151;">'+t+'</span>'
     ).join('');
+    const impHtml = MR_IMPROVEMENTS.map(t =>
+      '<span data-imp="'+t+'" onclick="mrToggleImprove('+idx+', this)" style="display:inline-block;padding:5px 10px;border:1px solid #d1d5db;border-radius:14px;font-size:12.5px;cursor:pointer;background:#fff;color:#374151;">'+t+'</span>'
+    ).join('');
     return '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;margin-bottom:14px;">'
       + '<div style="font-size:14px;font-weight:700;color:#111;">' + head + '</div>'
       + (sub ? '<div style="font-size:12px;color:#6b7280;margin-top:2px;">' + sub + '</div>' : '')
       + '<div id="mr-stars-'+idx+'" style="font-size:30px;letter-spacing:5px;cursor:pointer;color:#fbbf24;line-height:1;margin:10px 0;">' + stars + '</div>'
-      + '<input id="mr-note-'+idx+'" type="text" placeholder="개선의견 한 줄 (선택)" style="width:100%;border:1px solid #d1d5db;border-radius:8px;padding:8px 11px;font-size:14px;font-family:inherit;box-sizing:border-box;">'
-      + '<div style="font-size:12px;color:#6b7280;margin:12px 0 7px;">어르신 반응 (복수 선택 · 교사용)</div>'
-      + '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + tagsHtml + '</div>'
+      + '<div style="font-size:12px;color:#6b7280;margin:6px 0 7px;">어르신 반응 (복수 선택 · 교사용)</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">' + tagsHtml + '</div>'
+      + '<div style="font-size:12px;color:#6b7280;margin:0 0 7px;">개선 요청 (복수 선택)</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">' + impHtml + '</div>'
+      + '<input id="mr-note-'+idx+'" type="text" placeholder="기타 개선 의견 (직접 입력, 선택)" style="width:100%;border:1px solid #d1d5db;border-radius:8px;padding:8px 11px;font-size:14px;font-family:inherit;box-sizing:border-box;">'
       + '</div>';
   }).join('');
 }
@@ -3359,6 +3366,15 @@ function mrToggleReaction(idx, el) {
   else { arr.push(tag); el.style.background = '#eff6ff'; el.style.color = '#1e40af'; el.style.borderColor = '#bfdbfe'; }
 }
 
+function mrToggleImprove(idx, el) {
+  if (!_mrActs[idx]) return;
+  const tag = el.dataset.imp;
+  const arr = _mrActs[idx].improvements || (_mrActs[idx].improvements = []);
+  const i = arr.indexOf(tag);
+  if (i >= 0) { arr.splice(i, 1); el.style.background = '#fff'; el.style.color = '#374151'; el.style.borderColor = '#d1d5db'; }
+  else { arr.push(tag); el.style.background = '#fffbeb'; el.style.color = '#92400e'; el.style.borderColor = '#fcd34d'; }
+}
+
 async function submitMatReview() {
   if (demoBlocked()) { closeModal('modal-mat-review'); return; }
   const plan = _calPlan[_calSelDate];
@@ -3370,7 +3386,8 @@ async function submitMatReview() {
     const noteEl = document.getElementById('mr-note-' + idx);
     const note = noteEl ? noteEl.value.trim() : '';
     const reactions = a.reactions || [];
-    if (!a.rating && !note && reactions.length === 0) return;   // 비운 활동은 저장 안 함
+    const improvements = a.improvements || [];
+    if (!a.rating && !note && reactions.length === 0 && improvements.length === 0) return;   // 비운 활동은 저장 안 함
     rows.push({
       center_id: session.center_id,
       ssn: a.ssn, type_code: a.type_code, serial: a.serial, activity_no: a.activity_no,
@@ -3378,6 +3395,7 @@ async function submitMatReview() {
       schedule_date: _calSelDate,
       rating: a.rating || null,
       reactions: reactions,
+      improvements: improvements,
       memo: note || null,
       user_id: session.user_id, user_name: session.name || null,
     });
