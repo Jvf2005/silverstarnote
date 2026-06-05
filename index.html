@@ -1340,7 +1340,7 @@ async function goToDashboard() {
     switchAdminTab('info');
     showScreen('s-admin');
   } else {
-    document.getElementById('member-center-tag').textContent = center.name + (s.is_demo ? ' (데모 · 둘러보기 전용)' : '');
+    document.getElementById('member-center-tag').textContent = s.is_demo ? '체험센터' : center.name;
     switchMemberTab('seniors');
     showScreen('s-member');
   }
