@@ -511,6 +511,7 @@
       <div class="tab active" id="atab-info"    onclick="switchAdminTab('info')">📋 센터 정보</div>
       <div class="tab"        id="atab-seniors" onclick="switchAdminTab('seniors')">👴 어르신 목록</div>
       <div class="tab"        id="atab-members"   onclick="switchAdminTab('members')">👥 직원 관리</div>
+      <div class="tab"        id="atab-records"   onclick="switchAdminTab('records')">📊 직원별 기록</div>
       <div class="tab"        id="atab-calendar"  onclick="switchAdminTab('calendar')">📅 수업 달력</div>
     </div>
     <div class="tab-pane active" id="apane-info">
@@ -555,6 +556,16 @@
         </table>
       </div>
       <p style="font-size:12px;color:#9ca3af;margin-top:12px;">* 비활성화된 직원의 기록은 센터에 귀속되어 유지됩니다.</p>
+    </div>
+    <div class="tab-pane" id="apane-records">
+      <div class="section-title" id="staffrec-title">직원별 기록 현황</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>직원</th><th style="text-align:center;">이번 달</th><th style="text-align:center;">누적</th></tr></thead>
+          <tbody id="staffrec-tbody"></tbody>
+        </table>
+      </div>
+      <p style="font-size:12px;color:#9ca3af;margin-top:12px;">* '이번 달'은 한국시간 기준 당월 관찰 기록 수입니다. 기록이 많은 순으로 정렬됩니다.</p>
     </div>
     <div class="tab-pane" id="apane-calendar"></div>
   </div>
@@ -1464,12 +1475,13 @@ async function doMemberReg() {
 
 // ── TABS ─────────────────────────────────────────────────────────────────────
 function switchAdminTab(tab) {
-  ['info','seniors','members','calendar'].forEach(t => {
+  ['info','seniors','members','records','calendar'].forEach(t => {
     document.getElementById('atab-'+t).classList.toggle('active', t===tab);
     document.getElementById('apane-'+t).classList.toggle('active', t===tab);
   });
   if (tab==='seniors')  renderSeniors('admin-grid','');
   if (tab==='members')  renderMembersTable();
+  if (tab==='records')  renderStaffRecordStats();
   if (tab==='calendar') showCalendar('apane-calendar');
 }
 function switchMemberTab(tab) {
@@ -1480,6 +1492,47 @@ function switchMemberTab(tab) {
   if (tab==='seniors')  renderSeniors('member-grid','');
   if (tab==='record')   initRecordForm();
   if (tab==='calendar') showCalendar('mpane-calendar');
+}
+
+// ── 직원별 기록 집계 (센터 관리자용 · 자기 센터 한정) ────────────────────────
+async function renderStaffRecordStats() {
+  const session = getSession(); if (!session) return;
+  const tbody = document.getElementById('staffrec-tbody');
+  const monthKST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }).slice(0, 7); // YYYY-MM
+  document.getElementById('staffrec-title').textContent =
+    '직원별 기록 현황 (' + monthKST.replace('-', '년 ') + '월)';
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="3" style="color:#9ca3af;">불러오는 중…</td></tr>';
+  try {
+    const profs = await dbAll('profiles', { center_id: session.center_id });
+    const { data: recs, error } = await sb.from('records')
+      .select('user_id, user_name, created_at').eq('center_id', session.center_id);
+    if (error) throw error;
+
+    const stat = {}; // key(user_id 또는 이름) -> {name, month, total}
+    (recs || []).forEach(r => {
+      const key = r.user_id || ('name:' + (r.user_name || '(미상)'));
+      if (!stat[key]) stat[key] = { name: r.user_name || '', month: 0, total: 0 };
+      stat[key].total++;
+      const ym = new Date(r.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }).slice(0, 7);
+      if (ym === monthKST) stat[key].month++;
+    });
+    // 기록이 0건인 직원도 표에 나오도록 프로필과 병합 (이름은 프로필 우선)
+    profs.forEach(p => {
+      if (!stat[p.id]) stat[p.id] = { name: p.name || '', month: 0, total: 0 };
+      else stat[p.id].name = p.name || stat[p.id].name;
+    });
+
+    const rows = Object.values(stat).sort((a, b) => b.month - a.month || b.total - a.total);
+    if (!rows.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="3" style="color:#9ca3af;">아직 기록이 없습니다.</td></tr>'; return; }
+    tbody.innerHTML = rows.map(s =>
+      '<tr><td><strong>' + (s.name || '(이름 없음)') + '</strong></td>'
+      + '<td style="text-align:center;font-weight:700;color:#1e40af;">' + s.month + '</td>'
+      + '<td style="text-align:center;color:#6b7280;">' + s.total + '</td></tr>'
+    ).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="3" style="color:#ef4444;">불러오기 실패</td></tr>';
+    console.error('[staffrec]', e);
+  }
 }
 
 // ── MEMBERS TABLE ─────────────────────────────────────────────────────────────
