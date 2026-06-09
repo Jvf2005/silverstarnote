@@ -552,6 +552,10 @@
         <div class="info-row"><span class="info-key">대표자명</span><span class="info-val" id="ai-rep"></span></div>
         <div class="info-row"><span class="info-key">구독 상태</span><span class="info-val" id="ai-subs"></span></div>
       </div>
+      <div style="margin-top:14px;">
+        <button class="btn-sm btn-sm-ghost" onclick="openConsentForm()">📄 어르신 동의서 양식 보기/인쇄</button>
+        <div style="font-size:12px;color:#9ca3af;margin-top:6px;">어르신/보호자에게 받아 센터에서 보관하는 동의서 양식입니다.</div>
+      </div>
       <div class="section-title">직원 초대 코드</div>
       <div class="invite-box">
         <div class="invite-label">아래 코드를 직원에게 공유하세요 — 직원은 이 코드로 가입합니다</div>
@@ -907,6 +911,23 @@
   </div>
 </div>
 
+<!-- ════════════════════════ MODAL: 동의서 양식 ═══════════════════════════════ -->
+<div id="modal-consent-form" class="modal-overlay">
+  <div class="modal-card" style="max-width:600px;">
+    <div class="modal-header">
+      <div><div class="modal-title">개인정보·민감정보 수집·이용 동의서 양식</div></div>
+      <button class="modal-close" onclick="closeModal('modal-consent-form')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:12px;">
+        <button class="btn-sm btn-sm-primary" onclick="printConsentForm()">🖨 인쇄 / PDF 저장</button>
+        <span style="font-size:12px;color:#9ca3af;margin-left:8px;">인쇄 대화상자에서 'PDF로 저장'을 선택할 수 있습니다.</span>
+      </div>
+      <div class="privacy-body" id="consent-form-text"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════════════════ MODAL: 개인정보 처리방침 ═════════════════════════ -->
 <div id="modal-privacy" class="modal-overlay">
   <div class="modal-card" style="max-width:560px;">
@@ -973,7 +994,7 @@
       <div class="field"><label>특이사항</label><textarea id="sreg-notes" style="height:70px;" placeholder="예: 키가 크심, 왼손잡이"></textarea></div>
       <div class="consent-box" id="sreg-consent-box">
         <label class="consent-check"><input type="checkbox" id="sreg-agree-consent" /> <span>(필수) 이 어르신 본인 또는 보호자로부터 인지활동 기록을 위한 개인정보·건강 관련 정보의 수집·이용 동의를 받았음을 확인합니다.</span></label>
-        <div class="consent-summary" style="margin-top:8px;margin-bottom:0;">※ 동의서 원본은 센터에서 보관해주세요. 본 확인은 동의 취득 사실의 기록으로 사용됩니다.</div>
+        <div class="consent-summary" style="margin-top:8px;margin-bottom:0;">※ 동의서 원본은 센터에서 보관해주세요. 본 확인은 동의 취득 사실의 기록으로 사용됩니다. <a onclick="openConsentForm()" style="color:#2563eb;text-decoration:underline;cursor:pointer;">동의서 양식 보기/인쇄</a></div>
       </div>
       <button class="btn-primary" id="sreg-btn" onclick="submitSeniorReg()">등록하기</button>
     </div>
@@ -1986,6 +2007,79 @@ var PRIVACY_POLICY_TEXT = `실버스타노트(이하 "서비스")는 「개인�
 function openPrivacyModal() {
   document.getElementById('privacy-body-text').textContent = PRIVACY_POLICY_TEXT;
   openModal('modal-privacy');
+}
+
+// 어르신 동의서 양식 (센터가 출력해 어르신/보호자 서명을 받아 보관)
+var CONSENT_FORM_TEXT = `개인정보 및 민감정보 수집·이용 동의서
+
+본 센터는 어르신의 인지활동 기록 및 관리를 위해 아래와 같이 개인정보 및 건강 관련 민감정보를 수집·이용하고자 합니다. 내용을 충분히 읽으신 후 동의 여부를 선택하여 주시기 바랍니다.
+
+센터명: ____________________
+
+1. 수집·이용 목적
+ · 어르신의 인지활동 기록 작성 및 관리
+ · 인지 영역별 활동 경과 및 성장 리포트 제공
+ · 센터의 인지활동 프로그램 운영 및 서비스 품질 향상
+
+2. 수집하는 항목
+ · 개인정보: 성명, 출생연도, 성별
+ · 민감정보(건강 관련): 인지활동 참여 기록, 인지 영역별 평가·관찰 정보
+ ※ 필요한 최소한의 정보만 수집하며, 주민등록번호 등 고유식별정보는 수집하지 않습니다.
+
+3. 보유 및 이용 기간
+ 어르신의 센터 이용 기간 동안 보유·이용하며, 이용 종료 또는 동의 철회 시 지체 없이 파기합니다. 관계 법령에서 별도 보존 기간을 정한 경우 그 기간 동안 보관합니다.
+
+4. 정보의 처리 및 위탁
+ 센터는 인지활동 기록·관리를 위해 인지활동 기록 서비스(실버스타노트)를 이용하며, 이 과정에서 위 정보가 해당 서비스를 통해 처리·보관됩니다. 처리 시스템의 일부는 국외에 위치할 수 있습니다.
+
+5. 동의를 거부할 권리 및 불이익
+ 귀하는 위 수집·이용에 동의하지 않으실 수 있습니다. 다만 동의하지 않으실 경우 인지활동 기록 서비스를 통한 활동 기록·관리 및 성장 리포트 제공이 제한될 수 있습니다.
+
+────────────────────────────────────
+
+동의 여부 (각 항목에 표시해 주세요)
+
+① 개인정보(성명, 출생연도, 성별) 수집·이용
+     [  ] 동의함        [  ] 동의하지 않음
+
+② 민감정보(건강 관련: 인지활동 기록·평가 정보) 수집·이용  (별도 동의)
+     [  ] 동의함        [  ] 동의하지 않음
+
+────────────────────────────────────
+
+위 내용을 모두 확인하였으며, 표시한 바와 같이 동의합니다.
+
+작성일:  20____ 년 ____ 월 ____ 일
+
+어르신 성명: ______________________  (서명 또는 날인) ____________
+
+보호자(법정대리인) 성명: ______________________  (서명 또는 날인) ____________
+     어르신과의 관계: ______________________
+
+※ 어르신 본인의 서명이 어려운 경우, 보호자(법정대리인)가 서명할 수 있습니다.
+
+────────────────────────────────────
+
+(센터 기재란)
+ · 동의 확인 직원: ______________________
+ · 확인일:  20____ 년 ____ 월 ____ 일
+
+본 동의서는 센터가 보관합니다.`;
+
+function openConsentForm() {
+  document.getElementById('consent-form-text').textContent = CONSENT_FORM_TEXT;
+  openModal('modal-consent-form');
+}
+
+function printConsentForm() {
+  const w = window.open('', '_blank');
+  if (!w) { alert('팝업이 차단되었습니다. 팝업을 허용한 뒤 다시 시도해주세요.'); return; }
+  w.document.write('<html><head><title>동의서</title><meta charset="utf-8">'
+    + '<style>body{font-family:sans-serif;font-size:13px;line-height:1.7;white-space:pre-wrap;padding:32px;}</style>'
+    + '</head><body>' + CONSENT_FORM_TEXT.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(function(){ w.print(); }, 300);
 }
 document.addEventListener('click', function(e) {
   if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
