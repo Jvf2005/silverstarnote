@@ -58,6 +58,10 @@
     .privacy-body { font-size: 13px; line-height: 1.7; color: #374151; white-space: pre-wrap; max-height: 60vh; overflow-y: auto; }
     .intro-pillar { background:#fbf8f1; border:1px solid #e4ddcd; border-radius:12px; padding:14px 16px; margin-bottom:10px; font-size:14px; line-height:1.65; color:#4a5d59; }
     .intro-pillar b { color:#1d4f4b; font-size:15px; }
+    .more-toggle { display:block; width:100%; background:none; border:1px solid #2f6f6a; color:#2f6f6a; font-size:14px; font-weight:700; font-family:inherit; padding:13px; border-radius:10px; cursor:pointer; transition:all .18s; }
+    .more-toggle:hover { background:#2f6f6a; color:#fff; }
+    .more-panel { max-height:0; overflow:hidden; transition:max-height .45s ease; }
+    .more-panel.open { max-height:4000px; }
     .alert.visible { display: block; }
     .alert-error { background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626; }
 
@@ -789,7 +793,7 @@
   <div class="guest-header">
     <div>
       <div class="guest-logo">🌟 실버스타노트</div>
-      <a onclick="openIntroModal()" style="font-size:12px;color:#2f6f6a;text-decoration:underline;cursor:pointer;">실버스타노트 소개 보기</a>
+      <a onclick="openIntroModal()" style="font-size:12px;color:#dbeafe;text-decoration:underline;cursor:pointer;">실버스타노트 소개 보기</a>
     </div>
     <div style="display:flex;gap:8px;">
       <button class="btn-auth-link" onclick="doDemoLogin()" style="background:#eef2ff;color:#1e40af;border-color:#c7d2fe;font-weight:700;">🌟 데모 체험</button>
