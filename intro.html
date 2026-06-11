@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>실버스타노트 — 점수가 아니라, 어르신의 참여를 기록합니다</title>
+<style>
+  :root{
+    --ink:#1f2d2b;          /* 짙은 청록먹 — 본문 */
+    --ink-soft:#4a5d59;     /* 보조 텍스트 */
+    --teal:#2f6f6a;         /* 신뢰·인지 — 주조색 */
+    --teal-deep:#1d4f4b;
+    --sand:#f5f0e6;         /* 따뜻한 모래빛 배경 */
+    --sand-card:#fbf8f1;
+    --gold:#c98a3a;         /* 별·성취 액센트 (절제 사용) */
+    --line:#e4ddcd;
+    --sprout:#5b9a6f;       /* 새싹 초록 */
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+    color:var(--ink);background:var(--sand);line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px;}
+
+  /* ── HERO ── */
+  .hero{padding:96px 0 72px;text-align:center;position:relative;overflow:hidden;}
+  .hero-mark{font-size:13px;letter-spacing:.18em;color:var(--teal);font-weight:700;
+    text-transform:uppercase;margin-bottom:28px;}
+  .hero h1{
+    font-size:clamp(30px,5.5vw,52px);line-height:1.28;font-weight:800;
+    color:var(--teal-deep);letter-spacing:-.02em;
+  }
+  .hero h1 em{font-style:normal;color:var(--gold);}
+  .hero .sub{
+    margin:26px auto 0;max-width:600px;font-size:clamp(16px,2.2vw,19px);
+    color:var(--ink-soft);
+  }
+  .grow{margin:40px 0 8px;font-size:22px;letter-spacing:.3em;}
+  .grow span{opacity:0;animation:rise .6s ease forwards;}
+  .grow span:nth-child(1){animation-delay:.2s;}
+  .grow span:nth-child(2){animation-delay:.5s;}
+  .grow span:nth-child(3){animation-delay:.8s;}
+  @keyframes rise{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  /* ── 차별점 ── */
+  .pillars{padding:24px 0 16px;}
+  .pillar{
+    background:var(--sand-card);border:1px solid var(--line);border-radius:16px;
+    padding:30px 30px 28px;margin-bottom:18px;
+    display:grid;grid-template-columns:54px 1fr;gap:22px;align-items:start;
+  }
+  .pillar .ic{
+    width:54px;height:54px;border-radius:14px;background:#eaf2ef;
+    display:flex;align-items:center;justify-content:center;font-size:26px;
+  }
+  .pillar h3{font-size:19px;font-weight:800;color:var(--teal-deep);margin-bottom:8px;letter-spacing:-.01em;}
+  .pillar p{color:var(--ink-soft);font-size:15.5px;}
+  .pillar p .k{color:var(--teal);font-weight:700;}
+
+  .section-eyebrow{
+    text-align:center;font-size:12px;letter-spacing:.2em;color:var(--ink-soft);
+    text-transform:uppercase;font-weight:700;margin:56px 0 22px;
+  }
+
+  /* ── 한 줄 철학 띠 ── */
+  .credo{
+    background:var(--teal-deep);color:#eef4f2;border-radius:20px;
+    padding:46px 38px;text-align:center;margin:46px 0 8px;
+  }
+  .credo p{font-size:clamp(18px,2.6vw,23px);font-weight:700;line-height:1.6;letter-spacing:-.01em;}
+  .credo .small{font-size:15px;font-weight:400;opacity:.82;margin-top:14px;line-height:1.7;}
+
+  /* ── 더 보기 ── */
+  .more-wrap{padding:14px 0 96px;}
+  .more-toggle{
+    display:block;width:100%;background:none;border:1px solid var(--teal);
+    color:var(--teal);font-size:15px;font-weight:700;font-family:inherit;
+    padding:15px;border-radius:12px;cursor:pointer;transition:all .18s;
+  }
+  .more-toggle:hover{background:var(--teal);color:#fff;}
+  .more-panel{
+    max-height:0;overflow:hidden;transition:max-height .5s ease;
+  }
+  .more-panel.open{max-height:5000px;}
+  .more-inner{padding:36px 4px 8px;}
+  .more-inner h2{
+    font-size:24px;color:var(--teal-deep);font-weight:800;margin:38px 0 14px;
+    letter-spacing:-.02em;line-height:1.4;
+  }
+  .more-inner h2:first-child{margin-top:0;}
+  .more-inner p{color:var(--ink);font-size:16px;margin-bottom:16px;}
+  .more-inner .lead{font-size:17px;color:var(--ink-soft);}
+  .more-inner blockquote{
+    border-left:3px solid var(--gold);padding:4px 0 4px 20px;margin:22px 0;
+    color:var(--teal-deep);font-weight:700;font-size:17px;line-height:1.6;
+  }
+  .divider{height:1px;background:var(--line);margin:44px 0;border:0;}
+
+  footer{padding:40px 0 60px;text-align:center;color:var(--ink-soft);font-size:13px;}
+  footer .logo{font-weight:800;color:var(--teal-deep);font-size:15px;margin-bottom:8px;letter-spacing:-.01em;}
+
+  @media(max-width:560px){
+    .hero{padding:64px 0 48px;}
+    .pillar{grid-template-columns:1fr;gap:14px;padding:24px;}
+    .pillar .ic{width:48px;height:48px;font-size:23px;}
+    .credo{padding:34px 24px;}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .grow span{animation:none;opacity:1;}
+    html{scroll-behavior:auto;}
+  }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-mark">SilverStarNote · 실버스타노트</div>
+    <h1>점수가 아니라,<br>어르신의 <em>참여</em>를 기록합니다</h1>
+    <p class="sub">인지활동을 ‘훈련’이 아니라 ‘참여의 경험’으로 봅니다. 어르신을 점수로 관리되는
+      대상이 아니라, 스스로 선택하고 표현하는 주체로 대하는 인지활동 기록 서비스입니다.</p>
+    <div class="grow" aria-hidden="true"><span>🌱</span> <span>🌳</span> <span>⭐</span></div>
+  </div>
+</section>
+
+<section class="pillars">
+  <div class="wrap">
+    <div class="section-eyebrow">무엇이 다른가</div>
+
+    <div class="pillar">
+      <div class="ic">🗣️</div>
+      <div>
+        <h3>대화를 중시하는 교재</h3>
+        <p>활동을 ‘문제 풀이’가 아니라 <span class="k">대화의 계기</span>로 설계했습니다. 수업 중
+          오가는 말과 상호작용 자체가 인지를 자극하고, 어르신이 즐겁게 참여하도록 이끕니다.</p>
+      </div>
+    </div>
+
+    <div class="pillar">
+      <div class="ic">🙌</div>
+      <div>
+        <h3>스스로 결정하는 경험 (SDT)</h3>
+        <p>자기결정성 이론(SDT)에 기반해, 어르신이 <span class="k">스스로 고르고 주도하는</span>
+          순간을 활동에 담았습니다. 점수를 올리는 것보다, 참여하고 결정하는 경험 자체가 가치입니다.</p>
+      </div>
+    </div>
+
+    <div class="pillar">
+      <div class="ic">📊</div>
+      <div>
+        <h3>한 숫자가 아닌, 6영역의 결</h3>
+        <p>CIST 기준 <span class="k">6개 인지영역을 레이더 차트</span>로 봅니다. ‘몇 점’으로
+          줄 세우지 않고, 어떤 영역이 강하고 어떤 영역을 도우면 좋을지 — 어르신 개인의 결을 봅니다.</p>
+      </div>
+    </div>
+
+    <div class="pillar">
+      <div class="ic">🤝</div>
+      <div>
+        <h3>보는 사람에 맞춘 선별적 공개</h3>
+        <p>같은 기록도 <span class="k">누가 보느냐에 따라 다르게</span> 보여줍니다. 어르신께는
+          스스로 통제할 수 있는 지표만, 전문가에게는 상세 분석까지. 어르신이 상처받지 않도록 한
+          배려입니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="credo">
+    <p>“우리는 어르신을 점수로 관리되는 대상이 아니라,<br>스스로 결정하고 참여하는 주체로 봅니다.”</p>
+    <p class="small">위의 네 가지 차별점은 모두 이 하나의 관점에서 나왔습니다.<br>
+      왜 이렇게 설계했는지, 그 이유가 궁금하시다면 — 아래에서 더 읽어보실 수 있습니다.</p>
+  </div>
+</section>
+
+<section class="more-wrap">
+  <div class="wrap">
+    <button class="more-toggle" id="moreBtn" onclick="toggleMore()" aria-expanded="false">
+      ↓ 우리가 이렇게 만든 이유 — 더 보기
+    </button>
+    <div class="more-panel" id="morePanel">
+      <div class="more-inner">
+
+        <p class="lead">실버스타노트의 차별점은 화면 한 장으로는 잘 드러나지 않습니다. 다른 앱과
+          나란히 두면 ‘둘 다 인지활동을 기록하는 도구’로 보일 수 있으니까요. 하지만 그 안에는
+          일관된 하나의 관점이 흐릅니다. 그 이유를 풀어 보겠습니다.</p>
+
+        <hr class="divider">
+
+        <h2>1. 왜 ‘점수’보다 ‘참여’인가</h2>
+        <p>인지활동의 목적을 ‘검사 점수를 올리는 것’에 두면, 어르신은 끊임없이 평가받는 대상이
+          됩니다. 그러나 노년의 인지 건강에서 정말 중요한 것은 점수의 등락이 아니라, <strong>스스로
+          참여하고 관계 맺는 경험</strong>입니다. 그래서 우리는 활동을 ‘훈련 과제’가 아니라 ‘참여의
+          계기’로 설계했습니다.</p>
+        <blockquote>어르신은 관리되어야 할 환자가 아니라, 존중받아야 할 한 사람입니다.</blockquote>
+
+        <h2>2. 자기결정성(SDT) — 스스로 고르는 작은 순간들</h2>
+        <p>자기결정성 이론(Self-Determination Theory)은 사람이 <strong>자율성·유능감·관계성</strong>을
+          느낄 때 더 건강하게 동기를 갖는다고 말합니다. 인지가 약해지는 어르신일수록, ‘스스로
+          결정할 수 있다’는 감각은 더욱 소중합니다. 그래서 활동 곳곳에 어르신이 직접 고르고
+          주도하는 작은 순간들을 심었습니다. 정답을 맞히는 것보다, ‘내가 정했다’는 경험이
+          어르신의 자존감과 참여를 지킵니다.</p>
+
+        <h2>3. 대화를 중시하는 이유</h2>
+        <p>혼자 푸는 문제지보다, 사람과 주고받는 대화가 더 풍부하게 인지를 자극합니다. 기억을
+          떠올려 이야기하고, 의견을 말하고, 함께 웃는 그 과정에 언어·기억·집행기능이 모두
+          작동합니다. 무엇보다 대화는 어르신에게 <strong>‘평가받는 시간’이 아니라 ‘즐거운
+          시간’</strong>이 됩니다. 즐거워야 계속 참여하고, 계속 참여해야 효과가 쌓입니다.</p>
+
+        <h2>4. 한 숫자가 아니라 6영역의 결로 보는 이유</h2>
+        <p>‘인지 점수 몇 점’이라는 하나의 숫자는 사람을 줄 세우기 쉽습니다. 하지만 같은 점수라도
+          어떤 분은 언어가 강하고 시공간이 약할 수 있고, 또 다른 분은 그 반대일 수 있습니다.
+          우리는 CIST 기준 6개 영역(기억력·집행기능·지남력·언어기능·주의력·시공간기능)을
+          <strong>레이더 차트</strong>로 보여줍니다. 한 사람을 등수가 아니라 고유한 프로필로 보기
+          위해서입니다. 그래야 ‘무엇을 도우면 좋을지’가 보입니다.</p>
+
+        <h2>5. 가장 사려 깊은 선택 — 선별적 공개</h2>
+        <p>측정한 지표를 누구에게나 똑같이 보여주는 것이 늘 옳은 것은 아닙니다. 어르신 본인에게
+          인지 저하 점수를 그대로 보여드리는 것은 때로 상처가 되고, 의욕을 꺾을 수 있습니다.
+          그래서 우리는 <strong>보는 대상에 따라 무엇을 보여줄지 다르게</strong> 설계했습니다.</p>
+        <p>어르신께는 스스로 통제하고 노력할 수 있는 지표(참여, 성장의 발자취)만 따뜻하게
+          보여드리고, 인지 영역별 상세 분석이나 레이더 차트 같은 전문 지표는 이를 적절히 다룰 수
+          있는 전문가에게 제공합니다. 이것은 단순한 기능 설정이 아니라, <strong>‘이 정보를 보여주는
+          것이 이분에게 도움이 되는가’</strong>를 먼저 묻는 윤리적 판단입니다.</p>
+
+        <hr class="divider">
+
+        <h2>그래서, 실버스타노트는</h2>
+        <p>이 모든 선택은 결국 하나의 질문에서 나왔습니다 — <strong>“어떻게 하면 어르신을 더
+          존엄한 한 사람으로 대할 수 있을까.”</strong> 기록을 위한 도구이기 이전에, 어르신을 바라보는
+          하나의 관점입니다. 직접 체험해 보시면, 그 차이가 화면 곳곳에 스며 있음을 느끼실 수
+          있습니다.</p>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="logo">🌟 실버스타노트</div>
+    <div>어르신의 참여와 성장을 기록하는 인지활동 도구</div>
+    <div style="margin-top:10px;">문의 · support@silverstarnote.com</div>
+  </div>
+</footer>
+
+<script>
+  function toggleMore(){
+    var p=document.getElementById('morePanel');
+    var b=document.getElementById('moreBtn');
+    var open=p.classList.toggle('open');
+    b.setAttribute('aria-expanded', open?'true':'false');
+    b.textContent = open ? '↑ 접기' : '↓ 우리가 이렇게 만든 이유 — 더 보기';
+    if(open){ setTimeout(function(){ b.scrollIntoView({behavior:'smooth',block:'start'}); },120); }
+  }
+</script>
+</body>
+</html>
