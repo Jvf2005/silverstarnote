@@ -1073,7 +1073,7 @@
       </div>
       <div id="sd-pane-track1">
         <div id="sd-radar-wrap" style="display:none;">
-          <div class="radar-section-title">📊 SNSB 5영역 인지 프로파일</div>
+          <div class="radar-section-title">📊 CIST 6영역 인지 프로파일</div>
           <div id="sd-radar-chart" class="radar-wrap"></div>
         </div>
         <div class="detail-section-header">
@@ -1465,7 +1465,7 @@ async function goToDashboard() {
   if (!center) { await doLogout(); return; }
   if (s.role === 'admin') {
     document.getElementById('admin-center-tag').textContent = center.name;
-    document.getElementById('admin-name-tag').textContent   = s.name + ' 관리자';
+    document.getElementById('admin-name-tag').textContent   = '';
     document.getElementById('ai-id').textContent    = center.center_id;
     document.getElementById('ai-name').textContent  = center.name;
     document.getElementById('ai-biz').textContent   = center.business_no;
