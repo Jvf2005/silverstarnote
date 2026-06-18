@@ -4219,11 +4219,28 @@ async function onLoadFromCalendar(checked) {
 
   try {
     const today = todayKST();
-    const { data, error } = await sb.from('schedules').select('*')
-      .eq('center_id', session.center_id).eq('date', today);
-    if (error) throw error;
+    let row = null;
 
-    const row = data && data[0];
+    if (session.is_demo) {
+      // 데모 센터는 스케줄을 DB에 저장하지 않고 메모리(_calPlan)에만 생성한다.
+      // 따라서 DB가 아니라 메모리에서 오늘 수업을 조회한다. (필요 시 현재 달 생성 보장)
+      _calCenterId = session.center_id;
+      if (!_calMatsLoaded) {
+        try {
+          const { data: md } = await sb.from('materials').select('*').eq('level','A').order('set_no');
+          _calMats = md || []; _calMatsLoaded = true;
+        } catch(e) { console.error('materials load(demo):', e); }
+      }
+      const parts = today.split('-').map(Number);
+      await ensureSchedulesLoaded(parts[0], parts[1] - 1); // month는 0-indexed
+      row = _calPlan[today] || null;
+    } else {
+      const { data, error } = await sb.from('schedules').select('*')
+        .eq('center_id', session.center_id).eq('date', today);
+      if (error) throw error;
+      row = data && data[0];
+    }
+
     if (!row) {
       notice.style.display = 'block';
       document.getElementById('load-from-cal').checked = false;
