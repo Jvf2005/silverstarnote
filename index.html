@@ -2708,6 +2708,74 @@ function buildMonthHistory(recs, now) {
   return html + '</div>';
 }
 
+// ── 관찰 문장 변주 (어르신별 고정 — 한 반에서 서로 다른 톤) ──────────────────
+var OBS_VARIANTS = {
+  levels: {
+    physical: [
+      '신체적 보조와 함께 단계별로 안내해 드려 활동을 마치셨습니다.',
+      '손을 맞잡고 동작을 함께 해 드리니 끝까지 참여하셨습니다.',
+      '곁에서 직접 도와드리며 한 단계씩 함께 진행하셨습니다.',
+      '가까이서 몸짓을 거들어 드리자 활동을 완수하셨습니다.',
+    ],
+    visual: [
+      '시각적인 시범과 설명을 반복하여 과제를 이해하고 수행하셨습니다.',
+      '직접 보여 드리며 설명하니 차근차근 따라 하셨습니다.',
+      '본보기를 보여 드리자 방법을 파악하고 활동하셨습니다.',
+      '눈으로 보고 익히실 수 있게 시범을 들이니 잘 수행하셨습니다.',
+    ],
+    verbal: [
+      '간간이 구두로 설명을 드리자 무난하게 수행하셨습니다.',
+      '말로 안내해 드리니 어렵지 않게 따라오셨습니다.',
+      '구두 설명을 곁들이자 차분히 활동을 이어가셨습니다.',
+      '몇 마디 말씀으로 안내하니 수월하게 참여하셨습니다.',
+    ],
+    independent: [
+      '별도의 도움 없이 스스로 과제를 완벽히 수행하셨습니다.',
+      '도움 없이 혼자서 끝까지 해내셨습니다.',
+      '스스로 방법을 찾아 막힘없이 완수하셨습니다.',
+      '누구의 도움도 없이 독립적으로 활동을 마치셨습니다.',
+    ],
+  },
+  autonomy: [
+    ' 활동의 일부를 스스로 결정하시며 자기결정성을 발휘하셨습니다.',
+    ' 어떻게 할지 직접 고르시며 주도적으로 참여하셨습니다.',
+    ' 스스로 방향을 정하시는 모습이 돋보였습니다.',
+    ' 본인의 선택으로 활동을 이끌어 가셨습니다.',
+  ],
+  persistence: [
+    ' 어려운 순간에도 포기하지 않고 도움을 요청하며 끝까지 완수하셨습니다.',
+    ' 막히는 대목에서도 차분히 도움을 청하며 끝맺으셨습니다.',
+    ' 쉽지 않은 부분도 끈기 있게 매달려 해내셨습니다.',
+    ' 힘든 고비에도 물러서지 않고 활동을 마무리하셨습니다.',
+  ],
+  relation: [ // 뒤에 (키워드)+'의 모습을 보여주셨습니다.' 가 붙음
+    ' 동료와 따뜻한 유대감을 나누시며 ',
+    ' 옆 어르신과 정겹게 어울리시며 ',
+    ' 함께한 분들과 마음을 나누시며 ',
+    ' 주변 분들과 화기애애하게 교류하시며 ',
+  ],
+};
+function _obsHash(key) {
+  let h = 0; const s = String(key || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+function _obsPick(arr, key) { return arr[_obsHash(key) % arr.length]; }
+
+// (다) 모두 비었을 때 부드러운 안내 (막지 않음)
+function _showObsNudge(boxEl, show) {
+  if (!boxEl) return;
+  let n = document.getElementById(boxEl.id + '-nudge');
+  if (!n) {
+    n = document.createElement('div');
+    n.id = boxEl.id + '-nudge';
+    n.style.cssText = 'font-size:13px;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:10px 12px;margin-bottom:10px;line-height:1.6;';
+    boxEl.parentNode.insertBefore(n, boxEl);
+  }
+  n.textContent = '이 어르신만의 모습을 한 가지라도 남기면 더 의미 있는 기록이 됩니다. (자기결정성 지표나 특이사항을 한 가지 적어보세요.)';
+  n.style.display = show ? 'block' : 'none';
+}
+
 function generateRecord() {
   if (!_selectedSenior) { alert('어르신을 먼저 선택해주세요.'); return; }
   const domain   = document.getElementById('rec-domain').value;
@@ -2715,24 +2783,27 @@ function generateRecord() {
   const topic    = document.getElementById('rec-topic').value.trim();
   const tags  = document.getElementById('rec-tags').value.trim();
   const level = document.getElementById('rec-level').value || 'verbal';
-  const levels = {
-    'physical':    '신체적 보조와 함께 단계별로 안내해 드려 활동을 마쳤습니다.',
-    'visual':      '시각적인 시범과 설명을 반복하여 과제를 이해하고 수행하셨습니다.',
-    'verbal':      '간간이 구두로 설명을 드리자 무난하게 수행하셨습니다.',
-    'independent': '별도의 도움 없이 스스로 과제를 완벽히 수행하셨습니다.'
-  };
+  const key   = _selectedSenior.senior_id || _selectedSenior.name; // 어르신별 고정
+  const levelArr = OBS_VARIANTS.levels[level] || OBS_VARIANTS.levels.verbal;
+
   let text = _selectedSenior.name+' 어르신은 오늘 ['+domain+'] 영역의 \''+taskType+'\' 활동에 참여하셨습니다. ';
   if (topic) text += '\''+topic+'\' 주제로 진행된 활동에서 ';
-  text += levels[level] || '';
-  if (document.getElementById('sdc-autonomy').checked)
-    text += ' 활동의 일부를 스스로 결정하시며 자기결정성을 발휘하셨습니다.';
-  if (document.getElementById('sdc-persistence').checked)
-    text += ' 어려운 순간에도 포기하지 않고 도움을 요청하며 끝까지 완수하셨습니다.';
-  if (document.getElementById('sdc-relation').checked) {
+  text += _obsPick(levelArr, key);
+
+  const aut = document.getElementById('sdc-autonomy').checked;
+  const per = document.getElementById('sdc-persistence').checked;
+  const rel = document.getElementById('sdc-relation').checked;
+  if (aut) text += _obsPick(OBS_VARIANTS.autonomy, key);
+  if (per) text += _obsPick(OBS_VARIANTS.persistence, key);
+  if (rel) {
     const kw = document.getElementById('sdc-relation-input').value.trim();
-    text += ' 동료와 따뜻한 유대감을 나누시며 '+(kw||'따뜻한 유대감')+'의 모습을 보여주셨습니다.';
+    text += _obsPick(OBS_VARIANTS.relation, key) + (kw||'따뜻한 유대감') + '의 모습을 보여주셨습니다.';
   }
   if (tags) text += ' 특히 "'+tags+'" 등의 반응을 보이셨습니다.';
+
+  // (다) 도움수준 외 개별 특징이 하나도 없으면 부드럽게 안내 (생성은 그대로 진행)
+  _showObsNudge(document.getElementById('rec-result-box'), !aut && !per && !rel && !tags);
+
   document.getElementById('rec-result-text').textContent=text;
   document.getElementById('rec-result-box').classList.add('visible');
   document.getElementById('rec-saved').classList.remove('visible');
@@ -2822,24 +2893,26 @@ function generateGuestRecord() {
   const topic    = document.getElementById('guest-topic').value.trim();
   const tags     = document.getElementById('guest-rec-tags').value.trim();
   const level    = document.getElementById('guest-rec-level').value || 'verbal';
-  const levels = {
-    'physical':    '신체적 보조와 함께 단계별로 안내해 드려 활동을 마쳤습니다.',
-    'visual':      '시각적인 시범과 설명을 반복하여 과제를 이해하고 수행하셨습니다.',
-    'verbal':      '간간이 구두로 설명을 드리자 무난하게 수행하셨습니다.',
-    'independent': '별도의 도움 없이 스스로 과제를 완벽히 수행하셨습니다.'
-  };
+  const key      = name; // 게스트는 이름 기준 고정
+  const levelArr = OBS_VARIANTS.levels[level] || OBS_VARIANTS.levels.verbal;
+
   let text = name + ' 어르신은 오늘 [' + domain + '] 영역의 \'' + taskType + '\' 활동에 참여하셨습니다. ';
   if (topic) text += '\'' + topic + '\' 주제로 진행된 활동에서 ';
-  text += levels[level] || '';
-  if (document.getElementById('guest-sdc-autonomy').checked)
-    text += ' 활동의 일부를 스스로 결정하시며 자기결정성을 발휘하셨습니다.';
-  if (document.getElementById('guest-sdc-persistence').checked)
-    text += ' 어려운 순간에도 포기하지 않고 도움을 요청하며 끝까지 완수하셨습니다.';
-  if (document.getElementById('guest-sdc-relation').checked) {
+  text += _obsPick(levelArr, key);
+
+  const aut = document.getElementById('guest-sdc-autonomy').checked;
+  const per = document.getElementById('guest-sdc-persistence').checked;
+  const rel = document.getElementById('guest-sdc-relation').checked;
+  if (aut) text += _obsPick(OBS_VARIANTS.autonomy, key);
+  if (per) text += _obsPick(OBS_VARIANTS.persistence, key);
+  if (rel) {
     const kw = document.getElementById('guest-sdc-relation-input').value.trim();
-    text += ' 동료와 따뜻한 유대감을 나누시며 ' + (kw || '따뜻한 유대감') + '의 모습을 보여주셨습니다.';
+    text += _obsPick(OBS_VARIANTS.relation, key) + (kw || '따뜻한 유대감') + '의 모습을 보여주셨습니다.';
   }
   if (tags) text += ' 특히 "' + tags + '" 등의 반응을 보이셨습니다.';
+
+  _showObsNudge(document.getElementById('guest-result-box'), !aut && !per && !rel && !tags);
+
   document.getElementById('guest-result-text').textContent = text;
   document.getElementById('guest-result-box').classList.add('visible');
   document.getElementById('guest-copy-ok').classList.remove('visible');
@@ -3519,11 +3592,11 @@ async function loadMatActivities(setNo) {
       if (!actRows) return;
       const { isReady, domain, topic, typeName } = codesForAct(actRows);
       html += '<div class="mp-act-row" style="display:flex;flex-direction:column;gap:3px;">';
-      html += '<div class="mp-act-head">' + label + '</div>';
       if (!isReady) {
+        html += '<div class="mp-act-head">' + label + '</div>';
         html += '<div style="font-size:12px;color:#9ca3af;font-style:italic;">준비 중</div>';
       } else {
-        html += '<div style="font-size:13px;color:#6b7280;">' + (domain || '') + ' (난이도 3가지)</div>';
+        html += '<div class="mp-act-head">' + label + (domain ? ' ' + domain + ' (난이도 3가지)' : '') + '</div>';
         if (topic) html += '<div style="font-size:13px;color:#6b7280;">' + topic + '</div>';
         html += '<div style="font-size:15px;font-weight:700;color:#111;">' + (typeName || '') + '</div>';
       }
