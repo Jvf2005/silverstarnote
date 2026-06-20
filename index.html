@@ -4008,7 +4008,12 @@ function assignMaterial(ssn) {
   if (lsModal && lsModal.classList.contains('open')) {
     const el = id => document.getElementById(id);
     if (el('ls-domain')) el('ls-domain').textContent = mat.domain || '';
-    if (el('ls-type'))   el('ls-type').textContent   = mat.type   || '';
+    if (el('ls-type')) {
+      el('ls-type').textContent = mat.type || '';
+      if (mat.set_no) getSetActivityTypes(mat.set_no).then(t => {
+        if (t.combined && el('ls-type')) el('ls-type').textContent = t.combined;
+      });
+    }
     if (el('ls-topic'))  el('ls-topic').textContent  = mat.topic  || '';
     if (el('ls-ssn1'))   el('ls-ssn1').textContent   = mat.ssn    || '';
   }
@@ -4026,8 +4031,16 @@ async function openLessonStart() {
   const p = _calSelDate.split('-');
   document.getElementById('ls-date').textContent = p[0] + '년 ' + parseInt(p[1]) + '월 ' + parseInt(p[2]) + '일';
   const domain = (mat && mat.domain) || plan.domain || '';
-  const type   = (mat && mat.type)   || plan.type   || '';
   const topic  = (mat && mat.topic)  || plan.topic  || '';
+  const realSetNo = (mat && mat.set_no != null) ? mat.set_no : (plan.set_no || null);
+
+  // 문제 유형: 세트의 두 활동유형을 합쳐서 (예: "음식회상 · 그림기억")
+  let type = (mat && mat.type) || plan.type || '';
+  if (realSetNo) {
+    const t = await getSetActivityTypes(realSetNo);
+    if (t.combined) type = t.combined;
+  }
+
   document.getElementById('ls-domain').textContent = domain;
   document.getElementById('ls-type').textContent   = type;
   document.getElementById('ls-topic').textContent  = topic;
@@ -4036,7 +4049,6 @@ async function openLessonStart() {
 
   // 활동별 교재 로드 (SSN 표시 및 인쇄 URL 확보)
   _lsActivities = {};
-  const realSetNo = (mat && mat.set_no != null) ? mat.set_no : (plan.set_no || null);
   if (realSetNo) {
     try {
       const { data: actData } = await sb.from('materials').select('*').eq('set_no', realSetNo);
