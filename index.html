@@ -3436,6 +3436,36 @@ function ssnBadge(code, lvlCls) {
   return '<span class="' + cls + '">' + code + '</span>';
 }
 
+// ── 세트의 두 활동유형 이름 조회 ("음식회상 · 그림기억") ──────────────────────
+async function getSetActivityTypes(setNo) {
+  if (!setNo) return { combined: '', topic: '', domain: '' };
+  try {
+    const { data } = await sb.from('materials')
+      .select('type_name, activity_no, topic, domain').eq('set_no', setNo);
+    if (!data || !data.length) return { combined: '', topic: '', domain: '' };
+    const a1 = data.find(r => String(r.activity_no) === '1');
+    const a2 = data.find(r => String(r.activity_no) === '2');
+    const names = [a1 && a1.type_name, a2 && a2.type_name].filter(Boolean);
+    const rep = a1 || a2 || data[0];
+    return { combined: names.join(' · '), topic: (rep && rep.topic) || '', domain: (rep && rep.domain) || '' };
+  } catch (e) { return { combined: '', topic: '', domain: '' }; }
+}
+
+// ── 영역별 "왜 이 활동이 어르신에게 필요한가" (교재 미리보기 초록 박스) ──────────
+var WHY_BY_DOMAIN = {
+  '지남력': '오늘이 며칠이고 지금이 어느 계절인지 또렷이 아는 것은, 어르신이 세상과 이어져 있다는 안정감의 바탕입니다. 하루를 분명하게 여는 활동입니다.',
+  '기억력': '지난 일을 떠올려 이야기하는 과정은 삶의 기억을 붙들어 주고, 추억을 나누는 것 자체가 어르신의 자존감을 지켜 줍니다.',
+  '집행기능': '순서를 정하고 계획하는 활동은 일상의 작은 일들을 스스로 해내는 힘이 됩니다. ‘내가 해냈다’는 경험이 자립의 감각을 지켜 줍니다.',
+  '언어기능': '단어를 떠올리고 말로 표현하는 활동은 사람들과 이어지는 통로를 넓혀 줍니다. 하고 싶은 말을 전할 수 있다는 것은 관계와 존엄의 바탕입니다.',
+  '주의력': '한곳에 집중하고 작은 차이를 알아차리는 활동은, 일상의 변화를 스스로 살피는 힘으로 이어집니다.',
+  '시공간기능': '길을 찾고 공간을 가늠하는 활동은 익숙한 동네와 집에서 안전하게 지내는 힘과 닿아 있습니다.',
+};
+function whyForDomain(domain) {
+  if (!domain) return '';
+  const key = String(domain).replace(/[^가-힣]/g, ''); // 이모지 등 제거
+  return WHY_BY_DOMAIN[key] || '';
+}
+
 // ── materials activity 상세 조회 (v9 코드, set_no 기반) ──────────────────────
 async function loadMatActivities(setNo) {
   const detailEl = document.getElementById('mp-activity-detail');
@@ -3458,34 +3488,44 @@ async function loadMatActivities(setNo) {
     });
 
     function codesForAct(actRows) {
-      // code_a/b/c 컬럼 방식 우선, 없으면 level+ssn 방식
-      const first = actRows[0];
-      if (first.code_a !== undefined) {
-        return { a: first.code_a, b: first.code_b, c: first.code_c, isReady: isMatReady(first), domain: first.domain, topic: first.topic };
-      }
       const byLv = {};
       actRows.forEach(r => { byLv[r.level] = r; });
       const rep = byLv['A'] || actRows[0];
-      return { a: byLv['A']?.ssn, b: byLv['B']?.ssn, c: byLv['C']?.ssn, isReady: isMatReady(rep), domain: rep.domain, topic: rep.topic };
+      return {
+        a: byLv['A'] && byLv['A'].ssn, b: byLv['B'] && byLv['B'].ssn, c: byLv['C'] && byLv['C'].ssn,
+        isReady: isMatReady(rep), domain: rep.domain, topic: rep.topic, typeName: rep.type_name || ''
+      };
     }
+
+    // 상단 문제유형(mp-type-topic) + 초록 박스(mp-why)를 세트 데이터로 갱신
+    const a1 = byAct['1'] ? codesForAct(byAct['1']) : null;
+    const a2 = byAct['2'] ? codesForAct(byAct['2']) : null;
+    const combinedTypes = [a1 && a1.typeName, a2 && a2.typeName].filter(Boolean).join(' · ');
+    const setTopic = (a1 && a1.topic) || (a2 && a2.topic) || '';
+    const setDomain = (a1 && a1.domain) || (a2 && a2.domain) || '';
+    const ttEl = document.getElementById('mp-type-topic');
+    if (ttEl && combinedTypes) {
+      ttEl.innerHTML = '<span>' + combinedTypes + '</span>'
+        + (setTopic ? ' <span style="color:#9ca3af;font-weight:400;">· ' + setTopic + '</span>' : '');
+    }
+    const whyEl = document.getElementById('mp-why');
+    const whyTxt = whyForDomain(setDomain);
+    if (whyEl && whyTxt) whyEl.textContent = whyTxt;
 
     let html = '<div class="mp-act-panel">';
 
     [['1','활동①'],['2','활동②']].forEach(([no, label]) => {
       const actRows = byAct[no];
       if (!actRows) return;
-      const { a, b, c, isReady, domain, topic } = codesForAct(actRows);
-      html += '<div class="mp-act-row">';
+      const { isReady, domain, topic, typeName } = codesForAct(actRows);
+      html += '<div class="mp-act-row" style="display:flex;flex-direction:column;gap:3px;">';
       html += '<div class="mp-act-head">' + label + '</div>';
       if (!isReady) {
         html += '<div style="font-size:12px;color:#9ca3af;font-style:italic;">준비 중</div>';
       } else {
-        if (domain || topic) html += '<div class="mp-act-meta">' + (domain || '') + (domain && topic ? ' · ' : '') + (topic || '') + '</div>';
-        html += '<div class="mp-act-codes">'
-          + '<span class="mp-act-lbl">A</span>' + ssnBadge(a, 'lv-a')
-          + '<span class="mp-act-lbl" style="margin-left:4px;">B</span>' + ssnBadge(b, 'lv-b')
-          + '<span class="mp-act-lbl" style="margin-left:4px;">C</span>' + ssnBadge(c, 'lv-c')
-          + '</div>';
+        html += '<div style="font-size:13px;color:#6b7280;">' + (domain || '') + ' (난이도 3가지)</div>';
+        if (topic) html += '<div style="font-size:13px;color:#6b7280;">' + topic + '</div>';
+        html += '<div style="font-size:15px;font-weight:700;color:#111;">' + (typeName || '') + '</div>';
       }
       html += '</div>';
     });
@@ -3498,7 +3538,7 @@ async function loadMatActivities(setNo) {
       if (!isReady) {
         html += '<div style="font-size:12px;color:#9ca3af;font-style:italic;">준비 중</div>';
       } else {
-        html += '<div class="mp-act-codes">' + ssnBadge(tgCode || tgRows[0]?.ssn, 'tg') + '</div>';
+        html += '<div class="mp-act-codes">' + ssnBadge(tgCode || (tgRows[0] && tgRows[0].ssn), 'tg') + '</div>';
       }
       html += '</div>';
     }
@@ -4254,7 +4294,14 @@ async function onLoadFromCalendar(checked) {
       if (!mats || !mats.length) ssn = '';
     }
 
-    prefillRecordForm(row.domain, row.type, row.topic, ssn);
+    // 문제 유형: 세트의 두 활동유형을 합쳐서 (예: "음식회상 · 그림기억")
+    let taskType = row.type || '';
+    if (row.set_no) {
+      const t = await getSetActivityTypes(row.set_no);
+      if (t.combined) taskType = t.combined;
+    }
+
+    prefillRecordForm(row.domain, taskType, row.topic, ssn);
     _lockCalendarFields(true);
   } catch(e) {
     console.error(e);
