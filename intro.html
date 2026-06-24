@@ -189,8 +189,11 @@
 </section>
 
 <section class="wrap">
-  <div class="section-eyebrow">시작하기 · 자주 묻는 질문</div>
-  <div style="background:#fff;border:1px solid #e3ece9;border-radius:20px;padding:34px 30px;margin:8px 0 8px;">
+  <button class="more-toggle" id="guideBtn" onclick="toggleGuide()" aria-expanded="false" style="margin-top:8px;">
+    ↓ 시작하기 · 자주 묻는 질문
+  </button>
+  <div class="more-panel" id="guidePanel">
+  <div style="background:#fff;border:1px solid #e3ece9;border-radius:20px;padding:34px 30px;margin:18px 0 8px;">
     <h3 style="font-size:18px;font-weight:800;color:var(--teal-deep);margin:0 0 14px;letter-spacing:-.01em;">시작하는 순서</h3>
     <div style="background:#f0fdfa;border:1px solid #cdeae6;border-radius:14px;padding:16px 18px;color:var(--ink);font-size:15px;line-height:1.8;margin-bottom:26px;">
       <div><b>1.</b> 먼저 <b>센터(기관)를 등록</b>하세요 — 센터장(관리자)이 한 번만 하면 됩니다.</div>
@@ -208,6 +211,7 @@
       <p style="margin:0 0 12px;"><b style="color:var(--ink);">Q. 무료인가요?</b><br>종이책 워크북은 유료이지만, <b style="color:var(--teal);">PDF는 무료</b>로 사용하실 수 있습니다.</p>
       <p style="margin:0;"><b style="color:var(--ink);">Q. 더 궁금한 점이 있어요.</b><br><a href="mailto:support@silverstarnote.com" style="color:var(--teal);border-bottom:1px solid var(--teal);">support@silverstarnote.com</a> 으로 연락해주세요.</p>
     </div>
+  </div>
   </div>
 </section>
 
@@ -297,6 +301,13 @@
     b.setAttribute('aria-expanded', open?'true':'false');
     b.textContent = open ? '↑ 접기' : '↓ 우리가 이렇게 만든 이유 — 더 보기';
     if(open){ setTimeout(function(){ b.scrollIntoView({behavior:'smooth',block:'start'}); },120); }
+  }
+  function toggleGuide(){
+    var p=document.getElementById('guidePanel');
+    var b=document.getElementById('guideBtn');
+    var open=p.classList.toggle('open');
+    b.setAttribute('aria-expanded', open?'true':'false');
+    b.textContent = open ? '↑ 접기' : '↓ 시작하기 · 자주 묻는 질문';
   }
 </script>
 </body>
