@@ -204,7 +204,7 @@
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.48); z-index: 200; justify-content: center; align-items: flex-start; padding: 40px 16px; overflow-y: auto; }
     .modal-overlay.open { display: flex; }
     /* 다른 모달(어르신 등록 등) 위에 겹쳐 떠야 하는 보조 모달 */
-    #modal-consent-form, #modal-privacy, #modal-intro { z-index: 260; }
+    #modal-consent-form, #modal-privacy, #modal-intro, #modal-guide { z-index: 260; }
     .modal-card { background: #fff; border-radius: 16px; width: 100%; max-width: 480px; box-shadow: 0 8px 36px rgba(0,0,0,0.2); margin: auto; flex-shrink: 0; }
     .modal-wide { max-width: 620px; }
     .modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 24px 16px; border-bottom: 1px solid #f3f4f6; gap: 12px; }
@@ -450,6 +450,7 @@
     <div class="auth-links">센터가 없으신가요? <a onclick="showCenterReg()">센터 새로 등록하기</a></div>
     <div class="auth-links">초대코드를 받으셨나요? <a onclick="showMemberReg()">직원으로 가입하기</a></div>
     <div class="auth-links" style="margin-top:8px;"><a onclick="showScreen('s-guest')">← 관찰 기록 작성으로 돌아가기</a></div>
+    <div class="auth-links" style="margin-top:10px;font-size:12px;"><a onclick="openGuideModal()" style="cursor:pointer;">📖 처음이신가요? 이용 안내</a></div>
     <div class="auth-links" style="margin-top:10px;font-size:12px;"><a onclick="openPrivacyModal()">개인정보 처리방침</a> &nbsp;·&nbsp; <a onclick="contactSupport()" style="cursor:pointer;">문의하기</a></div>
   </div>
 </div>
@@ -511,6 +512,7 @@
   <div class="card">
     <div class="logo">🌟 실버스타노트</div>
     <div class="logo-sub">직원 가입</div>
+    <div style="font-size:12px;color:#6b7280;text-align:center;margin:-2px 0 12px;line-height:1.6;">초대코드는 센터장이 <b>센터 등록 후</b> 발급합니다.<br>코드가 없다면 센터장에게 요청하세요. <a onclick="openGuideModal()" style="cursor:pointer;">이용 안내</a></div>
     <div id="mreg-alert" class="alert alert-error"></div>
     <div class="field"><label>초대 코드 <span style="color:#ef4444">*</span></label><input type="text" id="mreg-code" placeholder="관리자에게 받은 초대 코드" style="text-transform:uppercase;letter-spacing:3px;font-family:monospace;" oninput="checkInviteCode(this.value)" /><div class="field-hint" id="mreg-center-hint"></div></div>
     <div class="field"><label>이름 <span style="color:#ef4444">*</span></label><input type="text" id="mreg-name" placeholder="이름 입력" /></div>
@@ -983,6 +985,39 @@
     </div>
     <div class="modal-body">
       <div class="privacy-body" id="privacy-body-text"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ MODAL: 이용 안내 (가입 순서 · FAQ) ═══════════════ -->
+<div id="modal-guide" class="modal-overlay">
+  <div class="modal-card" style="max-width:520px;">
+    <div class="modal-header">
+      <div><div class="modal-title">이용 안내</div></div>
+      <button class="modal-close" onclick="closeModal('modal-guide')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:14px;line-height:1.7;color:#1f2937;">
+        <div style="font-weight:700;color:#1d4f4b;margin-bottom:6px;">▶ 시작하는 순서</div>
+        <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:12px 14px;margin-bottom:18px;">
+          <div style="margin-bottom:8px;"><b>1.</b> 먼저 <b>센터(기관)를 등록</b>하세요. 센터장(관리자)이 한 번만 하면 됩니다. <span style="color:#0d9488;">(“센터 새로 등록하기”)</span></div>
+          <div style="margin-bottom:8px;"><b>2.</b> 등록하면 <b>직원 초대코드</b>가 발급됩니다. 로그인 후 <b>‘센터 정보’</b> 화면에서 확인할 수 있습니다.</div>
+          <div style="margin-bottom:8px;"><b>3.</b> 센터장이 그 <b>초대코드를 직원들에게 공유</b>합니다.</div>
+          <div><b>4.</b> 직원은 받은 <b>초대코드로 “직원으로 가입하기”</b> 를 진행합니다.</div>
+        </div>
+
+        <div style="font-weight:700;color:#1d4f4b;margin-bottom:6px;">▶ 자주 묻는 질문</div>
+        <div style="margin-bottom:10px;"><b>Q. 직원인데 초대코드가 없어요.</b><br>센터장에게 요청하세요. 센터가 아직 없다면, 센터장이 먼저 센터를 등록해야 코드가 만들어집니다.</div>
+        <div style="margin-bottom:10px;"><b>Q. 초대코드는 어디서 보나요?</b><br>센터장으로 로그인한 뒤 <b>‘센터 정보’</b> 화면에 표시됩니다.</div>
+        <div style="margin-bottom:10px;"><b>Q. 어르신은 어떻게 등록하나요?</b><br>로그인 후 어르신 등록 화면에서 등록합니다. (보호자 동의 확인 포함)</div>
+        <div style="margin-bottom:10px;"><b>Q. 수업 교재는 어떻게 보나요?</b><br><b>수업 달력</b>에서 날짜를 클릭하면 교재 미리보기·인쇄를 할 수 있습니다.</div>
+        <div style="margin-bottom:10px;"><b>Q. 무료인가요?</b><br>종이책 워크북은 유료이지만, <b>PDF는 무료</b>로 사용하실 수 있습니다.</div>
+        <div style="margin-bottom:4px;"><b>Q. 더 궁금한 점이 있어요.</b><br>아래 ‘운영자에게 문의하기’를 누르거나 <b>support@silverstarnote.com</b> 으로 연락해주세요.</div>
+
+        <div style="margin-top:16px;text-align:center;">
+          <a class="btn-sm btn-sm-ghost" onclick="contactSupport()" style="text-decoration:none;display:inline-block;cursor:pointer;">✉️ 운영자에게 문의하기</a>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -2054,6 +2089,10 @@ var PRIVACY_POLICY_TEXT = `실버스타노트(이하 "서비스")는 「개인�
 function openPrivacyModal() {
   document.getElementById('privacy-body-text').textContent = PRIVACY_POLICY_TEXT;
   openModal('modal-privacy');
+}
+
+function openGuideModal() {
+  openModal('modal-guide');
 }
 
 // 실버스타노트 소개 — '더 보기'에 담는 철학·이유 설명
