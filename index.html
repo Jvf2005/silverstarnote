@@ -570,6 +570,10 @@
         <a class="btn-sm btn-sm-ghost" onclick="contactSupport()" style="text-decoration:none;display:inline-block;cursor:pointer;">✉️ 운영자에게 문의하기</a>
         <div style="font-size:12px;color:#9ca3af;margin-top:6px;">문의 사항이 있으시면 support@silverstarnote.com 으로 연락해주세요.</div>
       </div>
+      <div id="ops-dash-wrap" style="margin-top:12px;display:none;">
+        <button class="btn-sm btn-sm-ghost" onclick="openOpsDashboard()">📊 운영 현황</button>
+        <div style="font-size:12px;color:#9ca3af;margin-top:6px;">방문자·교재 다운로드 집계 (운영자 전용)</div>
+      </div>
       <div class="section-title">직원 초대 코드</div>
       <div class="invite-box">
         <div class="invite-label">아래 코드를 직원에게 공유하세요 — 직원은 이 코드로 가입합니다</div>
@@ -1028,6 +1032,19 @@
           <a class="btn-sm btn-sm-ghost" onclick="contactSupport()" style="text-decoration:none;display:inline-block;cursor:pointer;">✉️ 운영자에게 문의하기</a>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ MODAL: 운영 현황 (운영자 전용) ═══════════════════ -->
+<div id="modal-ops" class="modal-overlay">
+  <div class="modal-card" style="max-width:560px;">
+    <div class="modal-header">
+      <div><div class="modal-title">📊 운영 현황</div></div>
+      <button class="modal-close" onclick="closeModal('modal-ops')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="ops-body" style="font-size:14px;color:#1f2937;">불러오는 중…</div>
     </div>
   </div>
 </div>
@@ -1517,6 +1534,7 @@ async function goToDashboard() {
     document.getElementById('ai-rep').textContent   = center.representative;
     document.getElementById('ai-subs').textContent  = center.subscription === 'active' ? '✅ 활성' : '⏸ 일시중지';
     document.getElementById('ai-invite').textContent = center.invite_code;
+    document.getElementById('ops-dash-wrap').style.display = (s.email === 'jjo.lux@gmail.com') ? 'block' : 'none';
     switchAdminTab('info');
     showScreen('s-admin');
   } else {
@@ -2103,6 +2121,77 @@ function openPrivacyModal() {
 
 function openGuideModal() {
   openModal('modal-guide');
+}
+
+// 운영 현황 (운영자 전용) — usage_events 집계 조회
+async function openOpsDashboard() {
+  openModal('modal-ops');
+  const box = document.getElementById('ops-body');
+  box.textContent = '불러오는 중…';
+  try {
+    const kstDate = ts => new Date(new Date(ts).getTime() + 9*3600*1000).toISOString().slice(0,10);
+    const today = new Date(Date.now() + 9*3600*1000).toISOString().slice(0,10);
+    const since = new Date(Date.now() - 14*86400*1000).toISOString();
+
+    // 최근 14일 원자료 (방문+다운로드)
+    const { data: rows, error } = await sb.from('usage_events')
+      .select('created_at, event_type, page, is_guest')
+      .gte('created_at', since);
+    if (error) throw error;
+    // 전체 누적 다운로드 건수
+    const { count: totalDl } = await sb.from('usage_events')
+      .select('*', { count:'exact', head:true }).eq('event_type','worksheet_print');
+
+    const r = rows || [];
+    // 집계
+    const visitByDay = {};   // day -> {app, intro}
+    const dlByDay = {};      // day -> count
+    let todayApp=0, todayIntro=0, dl14=0, dlGuest14=0, dlMember14=0;
+    r.forEach(e => {
+      const d = kstDate(e.created_at);
+      if (e.event_type === 'page_view') {
+        if (!visitByDay[d]) visitByDay[d] = { app:0, intro:0 };
+        if (e.page === 'intro') visitByDay[d].intro++; else visitByDay[d].app++;
+        if (d === today) { if (e.page==='intro') todayIntro++; else todayApp++; }
+      } else if (e.event_type === 'worksheet_print') {
+        dlByDay[d] = (dlByDay[d]||0) + 1;
+        dl14++; if (e.is_guest) dlGuest14++; else dlMember14++;
+      }
+    });
+
+    const days = [];
+    for (let i=0;i<14;i++){ days.push(new Date(Date.now()+9*3600*1000 - i*86400*1000).toISOString().slice(0,10)); }
+
+    let html = '';
+    html += '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;margin-bottom:14px;">'
+      + '<div style="font-weight:700;color:#1e40af;margin-bottom:6px;">오늘 방문자</div>'
+      + '<div style="font-size:15px;">앱 <b>'+todayApp+'</b>명 · 소개페이지 <b>'+todayIntro+'</b>명</div></div>';
+
+    html += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;margin-bottom:14px;">'
+      + '<div style="font-weight:700;color:#166534;margin-bottom:6px;">교재 다운로드</div>'
+      + '<div style="font-size:15px;">총 누적 <b>'+(totalDl||0)+'</b>건 · 최근 14일 <b>'+dl14+'</b>건 (체험 '+dlGuest14+' · 정식 '+dlMember14+')</div></div>';
+
+    html += '<div style="font-weight:700;color:#334155;margin:16px 0 8px;">최근 14일 일별</div>';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+      + '<tr style="background:#f8fafc;"><th style="text-align:left;padding:6px 8px;border-bottom:1px solid #e2e8f0;">날짜</th>'
+      + '<th style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">앱</th>'
+      + '<th style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">소개</th>'
+      + '<th style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">다운로드</th></tr>';
+    days.forEach(d => {
+      const v = visitByDay[d] || {app:0,intro:0};
+      const dl = dlByDay[d] || 0;
+      html += '<tr><td style="padding:6px 8px;border-bottom:1px solid #f1f5f9;">'+d.slice(5)+'</td>'
+        + '<td style="text-align:center;padding:6px 8px;border-bottom:1px solid #f1f5f9;">'+v.app+'</td>'
+        + '<td style="text-align:center;padding:6px 8px;border-bottom:1px solid #f1f5f9;">'+v.intro+'</td>'
+        + '<td style="text-align:center;padding:6px 8px;border-bottom:1px solid #f1f5f9;">'+dl+'</td></tr>';
+    });
+    html += '</table>';
+    html += '<div style="font-size:12px;color:#9ca3af;margin-top:10px;">※ 같은 브라우저는 하루 1회로 집계됩니다. 봇 등으로 실제보다 다소 높을 수 있습니다.</div>';
+    box.innerHTML = html;
+  } catch (e) {
+    box.innerHTML = '<div style="color:#dc2626;">불러오지 못했습니다. 잠시 후 다시 시도해주세요.</div>';
+    console.error('ops dashboard:', e);
+  }
 }
 
 // 실버스타노트 소개 — '더 보기'에 담는 철학·이유 설명
@@ -4205,6 +4294,33 @@ function updatePrintSummary() {
   document.getElementById('ls-print-summary').textContent = lines.join('\n');
 }
 
+// 교재 다운로드(인쇄) 집계 — 체험 포함 기록. 개인정보 없음(무엇을·언제만).
+async function logWorksheetDownload(setNo, domain, copies) {
+  try {
+    const s = getSession() || {};
+    await sb.from('usage_events').insert({
+      event_type: 'worksheet_print',
+      is_guest: !!s.is_demo,
+      set_no: setNo || null,
+      domain: domain || null,
+      center_id: s.is_demo ? null : (s.center_id || null),
+      copies: copies || 0
+    });
+  } catch (e) { /* 집계 실패는 무시 (인쇄에 영향 없음) */ }
+}
+
+// 방문자 집계 — 같은 브라우저는 하루 1회만 기록 (일별 순 방문자). 개인정보 없음.
+async function logVisitOnce(page) {
+  try {
+    const kst = new Date(Date.now() + 9*3600*1000).toISOString().slice(0,10); // 한국 날짜
+    const key = 'ssn_visit_' + page + '_' + kst;
+    if (localStorage.getItem(key)) return;      // 오늘 이미 기록됨
+    localStorage.setItem(key, '1');
+    await sb.from('usage_events').insert({ event_type:'page_view', page: page });
+  } catch (e) { /* 집계 실패는 무시 */ }
+}
+window.addEventListener('load', function(){ logVisitOnce('app'); });
+
 async function printLesson() {
   if (!_calSelDate) return;
   const plan = _calPlan[_calSelDate] || {};
@@ -4220,6 +4336,13 @@ async function printLesson() {
     if (sel) allDiffs[row.dataset.senior] = sel.value;
     if (att && att.checked && sel && sel.value in counts) counts[sel.value]++;
   });
+
+  // 다운로드 집계 기록 (체험 포함, 인쇄에 영향 없이 비동기)
+  logWorksheetDownload(
+    (mat && mat.set_no) || plan.set_no || null,
+    (mat && mat.domain) || plan.domain || '',
+    counts.A + counts.B + counts.C
+  );
 
   if (_calPlan[_calSelDate]) {
     const now = new Date().toISOString();
